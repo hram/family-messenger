@@ -5,6 +5,7 @@
 ## Структура
 
 - [docker-compose.yml](/home/hram/projects/family-messenger/infra/docker-compose.yml)
+- [docker-compose.local.yml](/home/hram/projects/family-messenger/infra/docker-compose.local.yml)
 - [\.env.example](/home/hram/projects/family-messenger/infra/.env.example)
 - [backend/Dockerfile](/home/hram/projects/family-messenger/backend/Dockerfile)
 
@@ -29,6 +30,8 @@ cd infra
 cp .env.example .env
 ```
 
+Это обязательный шаг. Без файла `.env` `docker compose` подставит пустые значения в `${DB_*}`, `${SERVER_PORT}` и другие переменные, из-за чего запуск сломается ошибками вида `no port specified: :<empty>`.
+
 3. Для запуска с SQL init от Postgres на чистом volume оставить:
 
 ```env
@@ -44,11 +47,21 @@ DB_SEED_ON_START=false
 docker compose up -d --build
 ```
 
+Важно:
+- либо запускать команду из каталога `infra`
+- либо, если запуск идёт из корня репозитория, указывать env-файл явно:
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
+```
+
 5. Проверить backend:
 
 ```bash
 curl http://localhost:8080/api/health
 ```
+
+Если в `.env` изменён `SERVER_PORT`, используй этот порт снаружи. Внутри контейнера backend всегда слушает `8080`, а `SERVER_PORT` управляет только внешним пробросом порта.
 
 6. Посмотреть логи:
 
@@ -74,6 +87,54 @@ docker compose down
 ```bash
 docker compose down -v
 docker compose up -d --build
+```
+
+## Локальная отладка backend вне Docker
+
+Если Ktor backend запускается из `./gradlew :backend:run` или из IDE, удобнее поднимать только Postgres:
+
+1. Перейти в `infra`:
+
+```bash
+cd infra
+```
+
+2. Подготовить `.env`:
+
+```bash
+cp .env.example .env
+```
+
+3. Запустить только локальную БД:
+
+```bash
+docker compose -f docker-compose.local.yml up -d
+```
+
+Если команда выполняется из корня репозитория:
+
+```bash
+docker compose -f infra/docker-compose.local.yml --env-file infra/.env up -d
+```
+
+4. Запустить backend локально:
+
+```bash
+cd ..
+./gradlew :backend:run
+```
+
+5. Остановить локальную БД:
+
+```bash
+docker compose -f docker-compose.local.yml down
+```
+
+Если нужно сбросить volume и заново накатить `schema.sql` и `seed.sql`:
+
+```bash
+docker compose -f docker-compose.local.yml down -v
+docker compose -f docker-compose.local.yml up -d
 ```
 
 ## Деплой на Ubuntu 24.04
@@ -124,6 +185,8 @@ cd family-messenger/infra
 cp .env.example .env
 ```
 
+Это обязательный шаг и для VPS. `docker compose` должен видеть `.env`, иначе переменные окружения в `docker-compose.yml` останутся пустыми.
+
 3. Обязательно поменять:
 
 - `DB_PASSWORD`
@@ -134,6 +197,14 @@ cp .env.example .env
 
 ```bash
 docker compose up -d --build
+```
+
+Команду выше нужно выполнять из каталога `family-messenger/infra`.
+
+Если запуск выполняется не из `infra`, используй явный путь к compose-файлу и env-файлу:
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 ```
 
 5. Проверить статус:

@@ -20,6 +20,8 @@ dependencies {
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
     implementation(libs.coroutines.core)
+    implementation(libs.ktor.openapi)
+    implementation(libs.ktor.swagger.ui)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.content.negotiation)

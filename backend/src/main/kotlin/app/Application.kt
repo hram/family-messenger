@@ -2,6 +2,7 @@ package app
 
 import app.config.AppConfig
 import app.plugins.configureAuthentication
+import app.plugins.configureDocumentation
 import app.plugins.configureKoin
 import app.plugins.configureMonitoring
 import app.plugins.configureRouting
@@ -22,6 +23,7 @@ fun Application.module() {
     configureSerialization()
     configureStatusPages()
     configureAuthentication()
+    configureDocumentation(appConfig)
     configureRouting(appConfig)
 }
 

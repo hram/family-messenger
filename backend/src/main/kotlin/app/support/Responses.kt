@@ -7,7 +7,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 
-suspend fun <T> ApplicationCall.respondOk(data: T) {
+suspend inline fun <reified T> ApplicationCall.respondOk(data: T) {
     respond(ApiResponse(success = true, data = data))
 }
 

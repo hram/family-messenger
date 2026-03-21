@@ -11,23 +11,29 @@ data class AppConfig(
 ) {
     companion object {
         fun from(config: ApplicationConfig): AppConfig = AppConfig(
-            name = config.requiredString("app.name"),
-            version = config.requiredString("app.version"),
+            name = envOrConfig("APP_NAME", config, "app.name", "family-messenger-backend"),
+            version = envOrConfig("APP_VERSION", config, "app.version", "0.1.0"),
             database = DatabaseConfig(
-                jdbcUrl = config.requiredString("app.database.jdbcUrl"),
-                user = config.requiredString("app.database.user"),
-                password = config.requiredString("app.database.password"),
-                driver = config.requiredString("app.database.driver"),
-                bootstrapSchema = config.optionalString("app.database.bootstrapSchema")?.toBooleanStrictOrNull() ?: true,
-                seedOnStart = config.optionalString("app.database.seedOnStart")?.toBooleanStrictOrNull() ?: true,
+                jdbcUrl = envOrNull("DB_JDBC_URL")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: buildJdbcUrl(
+                        host = envOrConfig("DB_HOST", config, "app.database.host", "localhost"),
+                        port = envOrConfig("DB_PORT", config, "app.database.port", "5432"),
+                        name = envOrConfig("DB_NAME", config, "app.database.name", "family_messenger"),
+                    ),
+                user = envOrConfig("DB_USER", config, "app.database.user", "family"),
+                password = envOrConfig("DB_PASSWORD", config, "app.database.password", "family"),
+                driver = envOrConfig("DB_DRIVER", config, "app.database.driver", "org.postgresql.Driver"),
+                bootstrapSchema = envOrConfig("DB_BOOTSTRAP_SCHEMA", config, "app.database.bootstrapSchema", "true").toBooleanStrictOrNull() ?: true,
+                seedOnStart = envOrConfig("DB_SEED_ON_START", config, "app.database.seedOnStart", "true").toBooleanStrictOrNull() ?: true,
             ),
             auth = AuthConfig(
-                tokenTtlHours = config.optionalString("app.auth.tokenTtlHours")?.toLongOrNull() ?: 720L,
+                tokenTtlHours = envOrConfig("AUTH_TOKEN_TTL_HOURS", config, "app.auth.tokenTtlHours", "720").toLongOrNull() ?: 720L,
             ),
             rateLimit = RateLimitConfig(
-                enabled = config.optionalString("app.rateLimit.enabled")?.toBooleanStrictOrNull() ?: true,
-                authWindowSeconds = config.optionalString("app.rateLimit.authWindowSeconds")?.toLongOrNull() ?: 60L,
-                authMaxRequestsPerWindow = config.optionalString("app.rateLimit.authMaxRequestsPerWindow")?.toIntOrNull() ?: 10,
+                enabled = envOrConfig("AUTH_RATE_LIMIT_ENABLED", config, "app.rateLimit.enabled", "true").toBooleanStrictOrNull() ?: true,
+                authWindowSeconds = envOrConfig("AUTH_RATE_LIMIT_WINDOW_SECONDS", config, "app.rateLimit.authWindowSeconds", "60").toLongOrNull() ?: 60L,
+                authMaxRequestsPerWindow = envOrConfig("AUTH_RATE_LIMIT_MAX_REQUESTS", config, "app.rateLimit.authMaxRequestsPerWindow", "10").toIntOrNull() ?: 10,
             ),
         )
     }
@@ -55,3 +61,14 @@ data class RateLimitConfig(
 private fun ApplicationConfig.requiredString(path: String): String = property(path).getString()
 
 private fun ApplicationConfig.optionalString(path: String): String? = propertyOrNull(path)?.getString()
+
+private fun buildJdbcUrl(host: String, port: String, name: String): String =
+    "jdbc:postgresql://$host:$port/$name"
+
+private fun envOrConfig(envName: String, config: ApplicationConfig, path: String, default: String): String =
+    envOrNull(envName)
+        ?: config.optionalString(path)
+        ?: default
+
+private fun envOrNull(envName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }

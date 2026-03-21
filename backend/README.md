@@ -16,6 +16,7 @@ Backend реализован на `Ktor + Koin + Exposed DSL + PostgreSQL`.
 - Koin DI для config, repository, service и database bootstrap
 - централизованная обработка ошибок через `StatusPages`
 - валидация входных DTO без дублирования transport-моделей
+- OpenAPI + Swagger UI через `io.github.smiley4`
 - persistence для `families`, `users`, `devices`, `invites`, `messages`, `message_receipts`, `location_events`, `auth_tokens`
 - инкрементальный sync через таблицу `sync_events`
 - deduplication по `(sender_user_id, client_message_uuid)`
@@ -25,7 +26,10 @@ Backend реализован на `Ktor + Koin + Exposed DSL + PostgreSQL`.
 
 Используются переменные из [application.yaml](/home/hram/projects/family-messenger/backend/src/main/resources/application.yaml):
 
-- `DB_JDBC_URL`
+- `DB_JDBC_URL` или `DB_HOST` + `DB_PORT` + `DB_NAME`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
 - `DB_USER`
 - `DB_PASSWORD`
 - `DB_BOOTSTRAP_SCHEMA`
@@ -73,4 +77,10 @@ Sync:
 ```bash
 curl "http://localhost:8080/api/messages/sync?since_id=0" \
   -H "Authorization: Bearer <token>"
+```
+
+Swagger UI:
+
+```bash
+open http://localhost:8080/api-docs/swagger
 ```
