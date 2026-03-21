@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.logback.classic)
 
+    testImplementation("com.h2database:h2:2.3.232")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.junit)
 }
@@ -47,4 +48,8 @@ ktor {
     fatJar {
         archiveFileName.set("family-messenger-backend-all.jar")
     }
+}
+
+tasks.test {
+    maxParallelForks = 1
 }

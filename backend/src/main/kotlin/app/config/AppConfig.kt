@@ -16,6 +16,8 @@ data class AppConfig(
             database = DatabaseConfig(
                 jdbcUrl = envOrNull("DB_JDBC_URL")
                     ?.takeIf { it.isNotBlank() }
+                    ?: config.optionalString("app.database.jdbcUrl")
+                        ?.takeIf { it.isNotBlank() }
                     ?: buildJdbcUrl(
                         host = envOrConfig("DB_HOST", config, "app.database.host", "localhost"),
                         port = envOrConfig("DB_PORT", config, "app.database.port", "5432"),

@@ -18,66 +18,65 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 
 fun Route.messageRoutes(messageService: MessageService) {
-    authenticate("auth-bearer") {
-        post("/messages/send", {
-            description = "Send a text, quick action, or location message inside the current family."
-            request {
-                body<SendMessageRequest>()
-            }
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<SendMessageResponse>>()
-                }
-            }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            val request = call.receive<SendMessageRequest>()
-            call.respondOk(messageService.sendMessage(principal, request))
-        }
 
-        get("/messages/sync", {
-            description = "Incremental sync endpoint returning messages, receipts and system events since the given cursor."
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<SyncPayload>>()
-                }
-            }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            val sinceId = call.request.queryParameters["since_id"]?.toLongOrNull() ?: 0L
-            call.respondOk(messageService.sync(principal, sinceId))
+    post("/messages/send", {
+        description = "Send a text, quick action, or location message inside the current family."
+        request {
+            body<SendMessageRequest>()
         }
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<SendMessageResponse>>()
+            }
+        }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        val request = call.receive<SendMessageRequest>()
+        call.respondOk(messageService.sendMessage(principal, request))
+    }
 
-        post("/messages/mark-delivered", {
-            description = "Mark one or more messages as delivered for the current user."
-            request {
-                body<MarkDeliveredRequest>()
+    get("/messages/sync", {
+        description = "Incremental sync endpoint returning messages, receipts and system events since the given cursor."
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<SyncPayload>>()
             }
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<AckResponse>>()
-                }
-            }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            val request = call.receive<MarkDeliveredRequest>()
-            call.respondOk(messageService.markDelivered(principal, request))
         }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        val sinceId = call.request.queryParameters["since_id"]?.toLongOrNull() ?: 0L
+        call.respondOk(messageService.sync(principal, sinceId))
+    }
 
-        post("/messages/mark-read", {
-            description = "Mark one or more messages as read for the current user."
-            request {
-                body<MarkReadRequest>()
-            }
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<AckResponse>>()
-                }
-            }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            val request = call.receive<MarkReadRequest>()
-            call.respondOk(messageService.markRead(principal, request))
+    post("/messages/mark-delivered", {
+        description = "Mark one or more messages as delivered for the current user."
+        request {
+            body<MarkDeliveredRequest>()
         }
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<AckResponse>>()
+            }
+        }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        val request = call.receive<MarkDeliveredRequest>()
+        call.respondOk(messageService.markDelivered(principal, request))
+    }
+
+    post("/messages/mark-read", {
+        description = "Mark one or more messages as read for the current user."
+        request {
+            body<MarkReadRequest>()
+        }
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<AckResponse>>()
+            }
+        }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        val request = call.receive<MarkReadRequest>()
+        call.respondOk(messageService.markRead(principal, request))
     }
 }

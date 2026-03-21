@@ -12,29 +12,28 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
 
 fun Route.profileRoutes(profileService: ProfileService) {
-    authenticate("auth-bearer") {
-        get("/profile/me", {
-            description = "Return the current user profile and family summary."
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<ProfileResponse>>()
-                }
-            }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            call.respondOk(profileService.getProfile(principal))
-        }
 
-        get("/contacts", {
-            description = "Return active family contacts visible to the current user."
-            response {
-                HttpStatusCode.OK to {
-                    body<ApiResponse<ContactsResponse>>()
-                }
+    get("/profile/me", {
+        description = "Return the current user profile and family summary."
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<ProfileResponse>>()
             }
-        }) {
-            val principal = requireNotNull(call.sessionPrincipal)
-            call.respondOk(profileService.getContacts(principal))
         }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        call.respondOk(profileService.getProfile(principal))
+    }
+
+    get("/contacts", {
+        description = "Return active family contacts visible to the current user."
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<ContactsResponse>>()
+            }
+        }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        call.respondOk(profileService.getContacts(principal))
     }
 }

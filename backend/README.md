@@ -22,6 +22,65 @@ Backend реализован на `Ktor + Koin + Exposed DSL + PostgreSQL`.
 - deduplication по `(sender_user_id, client_message_uuid)`
 - seed bootstrap c demo invite codes
 
+## Routing Style
+
+- зависимости сервисов резолвятся в [Routing.kt](/home/hram/projects/family-messenger/backend/src/main/kotlin/app/plugins/Routing.kt) и передаются в route-модули явно
+- protected route-модули не объявляют `authenticate { ... }` внутри себя, если они монтируются из общего auth-блока в [Routing.kt](/home/hram/projects/family-messenger/backend/src/main/kotlin/app/plugins/Routing.kt)
+- при добавлении нового защищённого route-модуля его нужно подключать внутрь общего `authenticate("auth-bearer")` блока, а не дублировать auth-обёртку в каждом файле
+- внутри route-файлов не использовать `Route.inject()` для бизнес-сервисов; зависимости должны быть видны в сигнатуре функции
+
+## Tests
+
+Backend покрыт минимальным набором integration/smoke тестов в [BackendIntegrationTest.kt](/home/hram/projects/family-messenger/backend/src/test/kotlin/app/BackendIntegrationTest.kt).
+
+Что проверяется:
+
+- `register-device` happy path
+- повторное использование invite при `max_uses = 1`
+- `login` для уже зарегистрированного устройства
+- `401 Unauthorized` для protected route без bearer token
+- `profile/me` с валидным token
+- `messages/send` и `messages/sync`
+- deduplication по `clientMessageUuid`
+- rate limit для auth endpoint'ов
+- доступность `openapi.json` и наличие `bearerAuth` в спецификации
+
+Как это устроено:
+
+- тесты запускают реальное Ktor-приложение через `testApplication {}`
+- вместо PostgreSQL используется in-memory `H2` в PostgreSQL-совместимом режиме
+- перед каждым тестом схема сбрасывается, поэтому тесты изолированы друг от друга
+
+Запуск из корня репозитория:
+
+```bash
+./gradlew :backend:test
+```
+
+Запуск только backend-тестов без демона:
+
+```bash
+./gradlew --no-daemon :backend:test
+```
+
+Запуск одного тест-класса:
+
+```bash
+./gradlew :backend:test --tests app.BackendIntegrationTest
+```
+
+Запуск одного теста:
+
+```bash
+./gradlew :backend:test --tests app.BackendIntegrationTest.profileReturnsCurrentUserForValidToken
+```
+
+Важно:
+
+- для этих тестов не нужен Docker и не нужен локальный PostgreSQL
+- тесты не требуют `buildFatJar` и не зависят от `docker compose`
+- если добавляешь новый protected endpoint, обычно стоит добавить хотя бы один smoke/integration тест на happy path и один тест на `401`
+
 ## Конфигурация
 
 Используются переменные из [application.yaml](/home/hram/projects/family-messenger/backend/src/main/resources/application.yaml):
