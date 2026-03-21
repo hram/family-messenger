@@ -1,0 +1,317 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-sans)}
+:root{--tg:#2AABEE;--tg-dark:#1A8DD1;--tg-light:#E8F4FD;--bubble-me:#DCEFFD;--bubble-them:#fff;--sidebar-bg:#F5F5F5;--app-bg:#E9EAEF;--text:#000;--text2:#6B6B6B;--border:#E0E0E0}
+body{background:transparent}
+.app{display:flex;height:600px;border-radius:12px;overflow:hidden;border:0.5px solid var(--color-border-tertiary);background:var(--app-bg)}
+.sidebar{width:280px;flex-shrink:0;background:#fff;border-right:0.5px solid var(--border);display:flex;flex-direction:column}
+.sidebar-header{background:var(--tg);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.sidebar-header span{color:#fff;font-size:16px;font-weight:500;flex:1}
+.search-bar{padding:8px 10px;border-bottom:0.5px solid var(--border)}
+.search-bar input{width:100%;background:var(--sidebar-bg);border:none;border-radius:20px;padding:6px 12px;font-size:13px;color:var(--text);outline:none}
+.chat-list{flex:1;overflow-y:auto}
+.chat-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:0.5px solid var(--border);transition:background .15s}
+.chat-item:hover{background:var(--tg-light)}
+.chat-item.active{background:#E8F4FD}
+.avatar{width:44px;height:44px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:#fff}
+.av-blue{background:#2AABEE}.av-green{background:#4DB269}.av-orange{background:#E8A840}.av-purple{background:#8B5CF6}
+.chat-meta{flex:1;min-width:0}
+.chat-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-preview{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.chat-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.chat-time{font-size:11px;color:var(--text2)}
+.badge{background:var(--tg);color:#fff;border-radius:10px;font-size:11px;font-weight:500;padding:2px 6px;min-width:18px;text-align:center}
+.online-dot{width:10px;height:10px;border-radius:50%;background:#4DB269;border:2px solid #fff;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.chat-header{background:var(--tg);padding:12px 16px;display:flex;align-items:center;gap:12px}
+.chat-header-info{flex:1}
+.chat-header-name{color:#fff;font-size:15px;font-weight:500}
+.chat-header-status{color:rgba(255,255,255,0.85);font-size:12px;margin-top:2px}
+.header-btn{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px;border-radius:50%;opacity:.9}
+.messages-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;background:var(--app-bg)}
+.msg-row{display:flex;align-items:flex-end;gap:6px}
+.msg-row.me{flex-direction:row-reverse}
+.bubble{max-width:72%;padding:8px 12px;border-radius:16px;font-size:14px;line-height:1.45;position:relative}
+.bubble.them{background:var(--bubble-them);border-bottom-left-radius:4px}
+.bubble.me{background:var(--bubble-me);border-bottom-right-radius:4px}
+.bubble-time{font-size:11px;color:var(--text2);margin-top:3px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.bubble.me .bubble-time{color:#5BA3C9}
+.check{color:#5BA3C9;font-size:12px}
+.msg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#fff;background:#4DB269}
+.date-divider{text-align:center;font-size:12px;color:var(--text2);padding:6px 0;background:rgba(0,0,0,0.06);border-radius:10px;align-self:center;padding:3px 12px}
+.location-bubble{background:var(--bubble-me);border-radius:16px;border-bottom-right-radius:4px;overflow:hidden;max-width:230px}
+.location-map{height:90px;background:linear-gradient(135deg,#E8F4FD,#C5E2F6);display:flex;align-items:center;justify-content:center;position:relative}
+.map-pin{font-size:24px}
+.location-label{padding:6px 10px;font-size:13px}
+.quick-action-bubble{display:inline-flex;align-items:center;gap:6px;background:var(--bubble-me);padding:8px 12px;border-radius:16px;border-bottom-right-radius:4px;font-size:13px}
+.qa-icon{width:22px;height:22px;border-radius:50%;background:var(--tg);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+.status-pill{background:#fff;border-radius:10px;padding:4px 10px;font-size:11px;color:var(--text2);align-self:center}
+.input-area{background:#fff;border-top:0.5px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:8px}
+.attach-btn{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:4px}
+.msg-input{flex:1;border:none;background:var(--sidebar-bg);border-radius:20px;padding:8px 14px;font-size:14px;outline:none;resize:none;max-height:100px;color:var(--text)}
+.send-btn{width:38px;height:38px;border-radius:50%;background:var(--tg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.send-btn:hover{background:var(--tg-dark)}
+.emoji-bar{display:flex;gap:6px;padding:6px 12px 0}
+.eq-btn{background:var(--tg-light);border:none;border-radius:16px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--tg-dark);font-weight:500;transition:background .15s}
+.eq-btn:hover{background:#d0e8f8}
+.screen{display:none}.screen.active{display:flex;flex-direction:column;height:100%}
+.contacts-screen{flex-direction:column;height:100%;background:#fff}
+.cont-header{background:var(--tg);padding:16px;color:#fff}
+.cont-header h2{font-size:18px;font-weight:500}
+.cont-header p{font-size:12px;opacity:.85;margin-top:2px}
+.cont-list{flex:1;overflow-y:auto}
+.cont-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background .15s}
+.cont-item:hover{background:var(--tg-light)}
+.cont-info{flex:1}
+.cont-name{font-size:14px;font-weight:500}
+.cont-role{font-size:12px;color:var(--text2);margin-top:2px}
+.cont-status{display:flex;align-items:center;gap:4px;font-size:11px}
+.online{color:#4DB269}.offline{color:var(--text2)}
+</style>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="avatar av-blue" style="width:32px;height:32px;font-size:13px">Я</div>
+      <span>Семья</span>
+      <button class="header-btn" style="font-size:16px" title="Новый чат">✎</button>
+    </div>
+    <div class="search-bar"><input placeholder="Поиск..."></div>
+    <div class="chat-list">
+      <div class="chat-item active" onclick="showChat('mama')">
+        <div style="position:relative"><div class="avatar av-green">М</div><div class="online-dot" style="position:absolute;bottom:0;right:0"></div></div>
+        <div class="chat-meta">
+          <div class="chat-name">Мама</div>
+          <div class="chat-preview">Хорошо, жду тебя!</div>
+        </div>
+        <div class="chat-right"><span class="chat-time">14:32</span></div>
+      </div>
+      <div class="chat-item" onclick="showChat('papa')">
+        <div style="position:relative"><div class="avatar av-orange">П</div></div>
+        <div class="chat-meta">
+          <div class="chat-name">Папа</div>
+          <div class="chat-preview">Буду через 20 минут</div>
+        </div>
+        <div class="chat-right"><span class="chat-time">13:55</span><span class="badge">2</span></div>
+      </div>
+      <div class="chat-item" onclick="showChat('family')">
+        <div class="avatar av-purple" style="font-size:13px">СЧ</div>
+        <div class="chat-meta">
+          <div class="chat-name">Семейный чат</div>
+          <div class="chat-preview">Катя: Я уже в школе!</div>
+        </div>
+        <div class="chat-right"><span class="chat-time">12:10</span><span class="badge">5</span></div>
+      </div>
+      <div class="chat-item" onclick="showChat('katya')">
+        <div class="avatar av-blue" style="font-size:13px">К</div>
+        <div class="chat-meta">
+          <div class="chat-name">Катя (дочь)</div>
+          <div class="chat-preview">Забери меня в 15:30 пожалуйста</div>
+        </div>
+        <div class="chat-right"><span class="chat-time">11:45</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="chat-mama" class="screen active" style="display:flex;flex-direction:column;height:100%">
+      <div class="chat-header">
+        <div class="avatar av-green" style="width:36px;height:36px;font-size:14px">М</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">Мама</div>
+          <div class="chat-header-status">в сети</div>
+        </div>
+        <button class="header-btn">📞</button>
+        <button class="header-btn">⋮</button>
+      </div>
+      <div class="messages-area">
+        <div class="date-divider">сегодня</div>
+        <div class="msg-row them">
+          <div class="msg-avatar">М</div>
+          <div>
+            <div class="bubble them">Привет! Когда заберёшь Катю?<div class="bubble-time">14:15</div></div>
+          </div>
+        </div>
+        <div class="msg-row me">
+          <div>
+            <div class="bubble me">Буду в 15:30 у школы<div class="bubble-time">14:18 <span class="check">✓✓</span></div></div>
+          </div>
+        </div>
+        <div class="msg-row me">
+          <div class="location-bubble">
+            <div class="location-map"><div class="map-pin">📍</div></div>
+            <div class="location-label" style="font-size:12px;color:var(--text2)">Моё местоположение<div class="bubble-time" style="margin-top:2px">14:19 <span class="check">✓✓</span></div></div>
+          </div>
+        </div>
+        <div class="msg-row them">
+          <div class="msg-avatar">М</div>
+          <div>
+            <div class="bubble them">Хорошо, жду тебя!<div class="bubble-time">14:32</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="emoji-bar">
+        <button class="eq-btn" onclick="sendQuick('Еду!')">Еду!</button>
+        <button class="eq-btn" onclick="sendQuick('Уже рядом')">Уже рядом</button>
+        <button class="eq-btn" onclick="sendQuick('Задерживаюсь')">Задерживаюсь</button>
+        <button class="eq-btn" onclick="shareLocation()">📍 Локация</button>
+      </div>
+      <div class="input-area">
+        <button class="attach-btn">📎</button>
+        <textarea class="msg-input" id="msg-input-mama" placeholder="Сообщение..." rows="1"></textarea>
+        <button class="send-btn" onclick="sendMsg('mama')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="chat-papa" class="screen" style="display:none;flex-direction:column;height:100%">
+      <div class="chat-header">
+        <div class="avatar av-orange" style="width:36px;height:36px;font-size:14px">П</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">Папа</div>
+          <div class="chat-header-status">последний раз 10 мин. назад</div>
+        </div>
+        <button class="header-btn">📞</button>
+        <button class="header-btn">⋮</button>
+      </div>
+      <div class="messages-area">
+        <div class="date-divider">сегодня</div>
+        <div class="msg-row me">
+          <div><div class="bubble me">Пап, ты где?<div class="bubble-time">13:40 <span class="check">✓✓</span></div></div></div>
+        </div>
+        <div class="msg-row them">
+          <div class="msg-avatar" style="background:var(--av-orange);background:#E8A840">П</div>
+          <div><div class="bubble them">Буду через 20 минут<div class="bubble-time">13:55</div></div></div>
+        </div>
+      </div>
+      <div class="emoji-bar">
+        <button class="eq-btn" onclick="sendQuick2('Ок!')">Ок!</button>
+        <button class="eq-btn" onclick="sendQuick2('Жду')">Жду</button>
+        <button class="eq-btn" onclick="shareLocation()">📍 Локация</button>
+      </div>
+      <div class="input-area">
+        <button class="attach-btn">📎</button>
+        <textarea class="msg-input" id="msg-input-papa" placeholder="Сообщение..." rows="1"></textarea>
+        <button class="send-btn" onclick="sendMsg('papa')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="chat-family" class="screen" style="display:none;flex-direction:column;height:100%">
+      <div class="chat-header">
+        <div class="avatar av-purple" style="width:36px;height:36px;font-size:12px">СЧ</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">Семейный чат</div>
+          <div class="chat-header-status">4 участника</div>
+        </div>
+        <button class="header-btn">📞</button>
+        <button class="header-btn">⋮</button>
+      </div>
+      <div class="messages-area">
+        <div class="date-divider">сегодня</div>
+        <div class="msg-row them">
+          <div class="msg-avatar" style="background:#E8A840">П</div>
+          <div><div class="bubble them"><span style="font-size:11px;color:var(--tg);font-weight:500;display:block;margin-bottom:2px">Папа</span>Все едем на дачу в эту субботу?<div class="bubble-time">11:30</div></div></div>
+        </div>
+        <div class="msg-row them">
+          <div class="msg-avatar" style="background:#4DB269">М</div>
+          <div><div class="bubble them"><span style="font-size:11px;color:#4DB269;font-weight:500;display:block;margin-bottom:2px">Мама</span>Да, я за!<div class="bubble-time">11:42</div></div></div>
+        </div>
+        <div class="msg-row them">
+          <div class="msg-avatar">К</div>
+          <div><div class="bubble them"><span style="font-size:11px;color:#8B5CF6;font-weight:500;display:block;margin-bottom:2px">Катя</span>Я уже в школе!<div class="bubble-time">12:10</div></div></div>
+        </div>
+        <div class="msg-row me">
+          <div><div class="bubble me">Отлично, беру всех в 10:00<div class="bubble-time">12:15 <span class="check">✓✓</span></div></div></div>
+        </div>
+      </div>
+      <div class="emoji-bar">
+        <button class="eq-btn" onclick="sendQuick3('Еду!')">Еду!</button>
+        <button class="eq-btn" onclick="sendQuick3('Ок!')">Ок!</button>
+        <button class="eq-btn" onclick="shareLocation()">📍 Локация</button>
+      </div>
+      <div class="input-area">
+        <button class="attach-btn">📎</button>
+        <textarea class="msg-input" id="msg-input-family" placeholder="Сообщение..." rows="1"></textarea>
+        <button class="send-btn" onclick="sendMsg('family')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="chat-katya" class="screen" style="display:none;flex-direction:column;height:100%">
+      <div class="chat-header">
+        <div class="avatar av-blue" style="width:36px;height:36px;font-size:14px">К</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">Катя (дочь)</div>
+          <div class="chat-header-status">в сети</div>
+        </div>
+        <button class="header-btn">📞</button>
+        <button class="header-btn">⋮</button>
+      </div>
+      <div class="messages-area">
+        <div class="date-divider">сегодня</div>
+        <div class="msg-row them">
+          <div class="msg-avatar av-blue" style="background:#2AABEE">К</div>
+          <div><div class="bubble them">Папа, забери меня в 15:30 пожалуйста<div class="bubble-time">11:45</div></div></div>
+        </div>
+        <div class="msg-row me">
+          <div><div class="bubble me">Конечно, буду вовремя<div class="bubble-time">11:48 <span class="check">✓✓</span></div></div></div>
+        </div>
+      </div>
+      <div class="emoji-bar">
+        <button class="eq-btn" onclick="sendQuick4('Еду!')">Еду!</button>
+        <button class="eq-btn" onclick="sendQuick4('Уже рядом')">Уже рядом</button>
+        <button class="eq-btn" onclick="shareLocation()">📍 Локация</button>
+      </div>
+      <div class="input-area">
+        <button class="attach-btn">📎</button>
+        <textarea class="msg-input" id="msg-input-katya" placeholder="Сообщение..." rows="1"></textarea>
+        <button class="send-btn" onclick="sendMsg('katya')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentChat = 'mama';
+function showChat(id) {
+  document.querySelectorAll('.chat-item').forEach(el=>el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.querySelectorAll('[id^="chat-"]').forEach(el=>{el.style.display='none'});
+  const el = document.getElementById('chat-'+id);
+  if(el){el.style.display='flex'; currentChat=id;}
+}
+function getArea(id){ return document.getElementById('chat-'+id)?.querySelector('.messages-area'); }
+function addMyMsg(chatId, text){
+  const area = getArea(chatId); if(!area) return;
+  const now = new Date(); const t = now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  const row = document.createElement('div'); row.className='msg-row me';
+  row.innerHTML=`<div><div class="bubble me">${text}<div class="bubble-time">${t} <span class="check">✓</span></div></div></div>`;
+  area.appendChild(row); area.scrollTop=area.scrollHeight;
+}
+function sendMsg(chatId){
+  const inp=document.getElementById('msg-input-'+chatId); if(!inp) return;
+  const v=inp.value.trim(); if(!v) return;
+  addMyMsg(chatId, v); inp.value='';
+}
+function shareLocation(){
+  const area = getArea(currentChat); if(!area) return;
+  const now = new Date(); const t = now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  const row = document.createElement('div'); row.className='msg-row me';
+  row.innerHTML=`<div class="location-bubble"><div class="location-map"><div class="map-pin">📍</div></div><div class="location-label" style="font-size:12px;color:var(--text2)">Моё местоположение<div class="bubble-time" style="margin-top:2px">${t} <span class="check">✓</span></div></div></div>`;
+  area.appendChild(row); area.scrollTop=area.scrollHeight;
+}
+function sendQuick(t){addMyMsg('mama',t)}
+function sendQuick2(t){addMyMsg('papa',t)}
+function sendQuick3(t){addMyMsg('family',t)}
+function sendQuick4(t){addMyMsg('katya',t)}
+document.querySelectorAll('.msg-input').forEach(inp=>{
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const id=this.id.replace('msg-input-','');sendMsg(id);}});
+  inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';});
+});
+</script>
