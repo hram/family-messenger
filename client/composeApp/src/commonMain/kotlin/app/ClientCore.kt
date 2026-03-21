@@ -40,6 +40,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -239,6 +240,10 @@ class ApiExecutor(
                 throw mapError(response.error)
             } catch (error: HttpRequestTimeoutException) {
                 lastNetworkException = error
+            } catch (error: AppException) {
+                throw error
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Throwable) {
                 lastNetworkException = error
             }
@@ -465,10 +470,8 @@ class MessagesRepository(
         return localDatabase.snapshot().messages
             .map { it.payload }
             .filter { payload ->
-                payload.senderUserId == contactId ||
-                    payload.recipientUserId == contactId ||
-                    (payload.senderUserId == currentUserId && payload.recipientUserId == contactId) ||
-                    (payload.recipientUserId == currentUserId && payload.senderUserId == contactId)
+                (payload.senderUserId == currentUserId && payload.recipientUserId == contactId) ||
+                    (payload.senderUserId == contactId && payload.recipientUserId == currentUserId)
             }
             .sortedBy { it.createdAt?.toEpochMilliseconds() ?: 0L }
     }
@@ -603,10 +606,10 @@ class PresenceRepository(
         apiClient.ping(deviceName)
     }
 
-    suspend fun shareCurrentLocation(): Boolean {
-        val location = geolocationService.currentLocation() ?: return false
+    suspend fun currentLocation(): LocationPayload? = geolocationService.currentLocation()
+
+    suspend fun recordLocationEvent(location: LocationPayload) {
         apiClient.shareLocation(location)
-        return true
     }
 }
 
@@ -667,8 +670,9 @@ class ShareLocationUseCase(
     private val messagesRepository: MessagesRepository,
 ) {
     suspend operator fun invoke(contactId: Long): Boolean {
-        val location = presenceRepository.shareCurrentLocation()
-        if (!location) return false
+        val location = presenceRepository.currentLocation() ?: return false
+        messagesRepository.queueLocationMessage(contactId, location)
+        runCatching { presenceRepository.recordLocationEvent(location) }
         messagesRepository.sync()
         return true
     }
@@ -729,8 +733,6 @@ class SyncEngine(
         if (settings.pushEnabled) {
             deviceRepository.updatePushToken("optional-local-placeholder")
         }
-
-        localDatabase.update { it }
     }
 }
 

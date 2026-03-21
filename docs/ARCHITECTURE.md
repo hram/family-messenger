@@ -6,11 +6,11 @@
 - `backend` is a Ktor JVM service that depends on the JVM variant of `shared-contract`.
 - `client/composeApp` is a Compose Multiplatform app that depends on `shared-contract` from `commonMain`.
 
-## Step 1 Decisions
+## Current Decisions
 
 - One shared transport module is the source of truth for API payloads.
-- Backend internal models are separated from transport models even though business logic is still a skeleton.
-- Client shared code owns API access, repository boundaries, app state, and screen routing scaffolding.
+- Backend internal models are separated from transport models while the public API stays in `shared-contract`.
+- Client shared code owns API access, repositories, local persistence snapshot, auth/session handling, sync engine, retry logic, message reconciliation, and shared UI state.
 - Platform-specific code is limited to entry points and future adapters such as secure storage, notifications, and geolocation.
 
 ## API Shape

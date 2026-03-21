@@ -5,7 +5,7 @@ Family Messenger is a Kotlin monorepo for a self-hosted family messaging MVP. Th
 ## Repository Layout
 
 - `backend/`: Ktor backend with auth, validation, persistence, sync, SQL artifacts, and docs
-- `client/composeApp/`: Compose Multiplatform client scaffold for Android, iOS, Desktop, and Web WASM
+- `client/composeApp/`: Compose Multiplatform client for Android, iOS, Desktop, and Web WASM
 - `client/docs/`: client architecture notes
 - `shared-contract/`: shared Kotlin Multiplatform DTO and API contract module
 - `infra/`: Docker Compose deployment layer for local runs and Ubuntu 24.04 VPS
@@ -35,3 +35,6 @@ The client is now implemented as a Kotlin Multiplatform Compose app with shared 
 3. Expand deployment with reverse proxy and HTTPS if needed.
 
 See [backend README](backend/README.md), [backend API notes](backend/docs/api.md), [client architecture](client/docs/architecture.md), and [overall architecture](docs/ARCHITECTURE.md) for details.
+
+The practical next steps after the current implementation pass are tracked in [TODO.md](TODO.md).
+Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).

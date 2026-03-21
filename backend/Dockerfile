@@ -16,8 +16,8 @@ WORKDIR /app
 
 COPY --from=builder /workspace/backend/build/libs/family-messenger-backend-all.jar /app/backend.jar
 
-EXPOSE 8080
+EXPOSE 8081
 
-ENV PORT=8080
+ENV PORT=8081
 
 ENTRYPOINT ["java", "-jar", "/app/backend.jar"]

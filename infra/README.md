@@ -58,10 +58,10 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 5. Проверить backend:
 
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:${SERVER_PORT:-8080}/api/health
 ```
 
-Если в `.env` изменён `SERVER_PORT`, используй этот порт снаружи. Внутри контейнера backend всегда слушает `8080`, а `SERVER_PORT` управляет только внешним пробросом порта.
+Если в `.env` изменён `SERVER_PORT`, используй этот порт снаружи. Внутри контейнера backend слушает `8081`, а `SERVER_PORT` управляет только внешним пробросом порта.
 
 6. Посмотреть логи:
 
@@ -223,7 +223,7 @@ docker compose up -d --build
 
 ## Что нужно настроить руками на сервере
 
-- открыть firewall для нужного внешнего порта, обычно `80/443` или временно `8080`
+- открыть firewall для нужного внешнего порта, обычно `80/443` или временно `${SERVER_PORT}`
 - сменить `DB_PASSWORD`
 - настроить домен и reverse proxy позже, если backend будет публиковаться наружу
 - настроить backup для docker volume `postgres_data`
