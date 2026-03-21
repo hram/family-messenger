@@ -1,0 +1,37 @@
+# Family Messenger
+
+Family Messenger is a Kotlin monorepo for a self-hosted family messaging MVP. The backend is now implemented around `Ktor + Koin + Exposed DSL + PostgreSQL`, while the shared transport contract remains centralized in `shared-contract`.
+
+## Repository Layout
+
+- `backend/`: Ktor backend with auth, validation, persistence, sync, SQL artifacts, and docs
+- `client/composeApp/`: Compose Multiplatform client scaffold for Android, iOS, Desktop, and Web WASM
+- `client/docs/`: client architecture notes
+- `shared-contract/`: shared Kotlin Multiplatform DTO and API contract module
+- `infra/`: Docker Compose deployment layer for local runs and Ubuntu 24.04 VPS
+- `docs/`: cross-cutting architecture documentation
+- `promts/`: original implementation prompts
+
+## Module Wiring
+
+`shared-contract` is the single transport-definition module. The backend imports it on the JVM side and uses its DTOs in route handlers. The client depends on the same module from `commonMain`, so the request and response payloads stay aligned across platforms.
+
+## Development Notes
+
+The backend now includes:
+
+- route handlers for all MVP API endpoints
+- PostgreSQL persistence via Exposed DSL
+- Koin-based DI
+- centralized JSON error handling
+- schema bootstrap and demo seed support
+
+The client is still at scaffold stage and will be completed in the next implementation step.
+
+## Next Planned Layers
+
+1. Finish the multiplatform client implementation.
+2. Run a strict project self-review and tighten remaining MVP risks.
+3. Expand deployment with reverse proxy and HTTPS if needed.
+
+See [backend README](backend/README.md), [backend API notes](backend/docs/api.md), [client architecture](client/docs/architecture.md), and [overall architecture](docs/ARCHITECTURE.md) for details.

@@ -1,0 +1,6 @@
+.git
+.idea
+client
+build
+.gradle
+**/.DS_Store

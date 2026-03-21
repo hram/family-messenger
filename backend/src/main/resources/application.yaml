@@ -1,0 +1,23 @@
+ktor:
+  application:
+    modules:
+      - app.ApplicationKt.module
+  deployment:
+    port: ${PORT:8080}
+
+app:
+  name: family-messenger-backend
+  version: 0.1.0
+  database:
+    jdbcUrl: ${DB_JDBC_URL:jdbc:postgresql://localhost:5432/family_messenger}
+    user: ${DB_USER:family}
+    password: ${DB_PASSWORD:family}
+    driver: org.postgresql.Driver
+    bootstrapSchema: ${DB_BOOTSTRAP_SCHEMA:true}
+    seedOnStart: ${DB_SEED_ON_START:true}
+  auth:
+    tokenTtlHours: ${AUTH_TOKEN_TTL_HOURS:720}
+  rateLimit:
+    enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
+    authWindowSeconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
+    authMaxRequestsPerWindow: ${AUTH_RATE_LIMIT_MAX_REQUESTS:10}

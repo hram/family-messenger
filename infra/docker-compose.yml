@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: family-messenger-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../backend/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../backend/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: family-messenger-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${SERVER_PORT}
+      DB_JDBC_URL: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_BOOTSTRAP_SCHEMA: ${DB_BOOTSTRAP_SCHEMA}
+      DB_SEED_ON_START: ${DB_SEED_ON_START}
+      AUTH_TOKEN_TTL_HOURS: ${AUTH_TOKEN_TTL_HOURS}
+      AUTH_RATE_LIMIT_ENABLED: ${AUTH_RATE_LIMIT_ENABLED}
+      AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS}
+      AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS}
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+
+volumes:
+  postgres_data:
