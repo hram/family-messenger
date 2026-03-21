@@ -9,6 +9,7 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(17)
     androidTarget()
     jvm("desktop")
     iosX64()
@@ -40,11 +41,12 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.components.resources)
             implementation(libs.coroutines.core)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.koin.core)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.androidx.lifecycle.viewmodel)
         }
         androidMain.dependencies {
             implementation(compose.preview)
@@ -56,7 +58,7 @@ kotlin {
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.ktor.client.java)
+            implementation(libs.ktor.client.okhttp)
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.wasm.js)
@@ -78,6 +80,11 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     packaging {

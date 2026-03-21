@@ -26,7 +26,7 @@ The backend now includes:
 - centralized JSON error handling
 - schema bootstrap and demo seed support
 
-The client is still at scaffold stage and will be completed in the next implementation step.
+The client is now implemented as a Kotlin Multiplatform Compose app with shared Ktor/Koin client logic, local persistence, auth/session handling, polling sync, and platform entrypoints for Android, iOS, Desktop, and Web WASM.
 
 ## Next Planned Layers
 

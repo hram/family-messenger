@@ -1,19 +1,16 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package app
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import kotlinx.browser.document
 
+@OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    val apiClient = FamilyMessengerApiClient.create(
-        baseUrl = "http://localhost:8080",
-        engineFactory = { defaultHttpClient(createPlatformHttpClient()) },
-    )
-    val viewModel = AppViewModel(
-        initialPlatform = platformType(),
-        contactsRepository = ContactsRepository(apiClient),
-    )
-
     ComposeViewport(document.body!!) {
-        FamilyMessengerApp(viewModel)
+        val app = remember { ClientApp.create(createPlatformServices()) }
+        FamilyMessengerApp(app.viewModel)
     }
 }
