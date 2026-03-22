@@ -5,6 +5,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -104,9 +105,8 @@ class DesktopAuthSwitchE2eTest {
     }
 
     private fun logoutThroughUi() {
-        rule.runOnIdle {
-            clientApp.viewModel.openSettings()
-        }
+        rule.onNodeWithTag(AppTestTags.TopBarSettings)
+            .performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForTag(AppTestTags.SettingsLogout)
         rule.onNodeWithTag(AppTestTags.SettingsLogout).performClick()
         rule.waitForTag(AppTestTags.OnboardingSubmit)

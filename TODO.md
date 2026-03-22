@@ -16,6 +16,7 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 - sync
 - receipts
 - location flow
+- добавить debug-e2e режим с видимым desktop-окном для наблюдаемого прогона сценариев вручную
 
 ## Шаг B. Первый VPS deploy
 
