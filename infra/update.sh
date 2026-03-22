@@ -48,7 +48,6 @@ rm -f /tmp/family-messenger-web.tar.gz
 
 ${SUDO} sed -i "s/^RELEASE_VERSION=.*/RELEASE_VERSION=${RELEASE_VERSION}/" "${CONFIG_ROOT}/install.env"
 ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
-${SUDO} nginx -t
-${SUDO} systemctl restart nginx
+${SUDO} systemctl restart caddy
 
 log "Updated backend to ${RELEASE_VERSION}"

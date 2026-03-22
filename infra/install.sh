@@ -8,7 +8,6 @@ CONFIG_ROOT="${CONFIG_ROOT:-/etc/family-messenger}"
 SYSTEMD_UNIT_NAME="${SYSTEMD_UNIT_NAME:-family-messenger-backend}"
 APP_USER="${APP_USER:-family}"
 APP_GROUP="${APP_GROUP:-family}"
-SERVER_PORT="${SERVER_PORT:-8080}"
 BACKEND_PORT="${BACKEND_PORT:-8081}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-family_messenger}"
@@ -19,10 +18,11 @@ AUTH_RATE_LIMIT_WINDOW_SECONDS="${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}"
 AUTH_RATE_LIMIT_MAX_REQUESTS="${AUTH_RATE_LIMIT_MAX_REQUESTS:-10}"
 RELEASE_VERSION="${RELEASE_VERSION:-}"
 
-POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:16-alpine}"
+POSTGRES_IMAGE="${POSTGRES_IMAGE:-mirror.gcr.io/library/postgres:16-alpine}"
 POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
+PUBLIC_HOST="${PUBLIC_HOST:-}"
 
 log() {
   printf '[family-messenger] %s\n' "$*"
@@ -69,6 +69,15 @@ detect_public_ip() {
   printf '%s\n' "${ip:-localhost}"
 }
 
+detect_public_host() {
+  local public_ip="$1"
+  if [[ -n "${PUBLIC_HOST}" ]]; then
+    printf '%s\n' "${PUBLIC_HOST}"
+    return
+  fi
+  printf '%s.sslip.io\n' "${public_ip//./-}"
+}
+
 install_docker() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     log "Docker and Compose plugin already installed"
@@ -103,16 +112,16 @@ install_java() {
   ${SUDO} apt-get install -y openjdk-17-jre-headless
 }
 
-install_nginx() {
-  if command -v nginx >/dev/null 2>&1; then
-    log "nginx already installed"
+install_caddy() {
+  if command -v caddy >/dev/null 2>&1; then
+    log "Caddy already installed"
     return
   fi
 
-  log "Installing nginx"
+  log "Installing Caddy"
   ${SUDO} apt-get update
-  ${SUDO} apt-get install -y nginx
-  ${SUDO} systemctl enable --now nginx
+  ${SUDO} apt-get install -y caddy
+  ${SUDO} systemctl enable --now caddy
 }
 
 ensure_user_and_dirs() {
@@ -231,46 +240,31 @@ EOF
   ${SUDO} chmod 0600 "${CONFIG_ROOT}/backend.env"
 }
 
-write_nginx_config() {
-  cat <<EOF | ${SUDO} tee /etc/nginx/sites-available/family-messenger >/dev/null
-server {
-    listen ${SERVER_PORT};
-    server_name _;
-
-    root ${INSTALL_ROOT}/web;
-    index index.html;
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:${BACKEND_PORT};
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+write_caddy_config() {
+  local public_host="$1"
+  cat <<EOF | ${SUDO} tee /etc/caddy/Caddyfile >/dev/null
+${public_host} {
+    header {
+        Cross-Origin-Opener-Policy same-origin
+        Cross-Origin-Embedder-Policy require-corp
     }
 
-    location = /openapi.json {
-        proxy_pass http://127.0.0.1:${BACKEND_PORT};
-        proxy_set_header Host \$host;
+    @api path /api/* /openapi.json /swagger-ui/*
+    handle @api {
+        reverse_proxy 127.0.0.1:${BACKEND_PORT}
     }
 
-    location /swagger-ui/ {
-        proxy_pass http://127.0.0.1:${BACKEND_PORT};
-        proxy_set_header Host \$host;
-    }
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
+    root * ${INSTALL_ROOT}/web
+    try_files {path} /index.html
+    file_server
 }
 EOF
-  ${SUDO} ln -sf /etc/nginx/sites-available/family-messenger /etc/nginx/sites-enabled/family-messenger
-  ${SUDO} rm -f /etc/nginx/sites-enabled/default
 }
 
 write_install_state() {
   local version="$1"
   local public_ip="$2"
+  local public_host="$3"
   cat <<EOF | ${SUDO} tee "${CONFIG_ROOT}/install.env" >/dev/null
 RELEASE_VERSION=${version}
 REPO_OWNER=${REPO_OWNER}
@@ -280,7 +274,6 @@ CONFIG_ROOT=${CONFIG_ROOT}
 SYSTEMD_UNIT_NAME=${SYSTEMD_UNIT_NAME}
 APP_USER=${APP_USER}
 APP_GROUP=${APP_GROUP}
-SERVER_PORT=${SERVER_PORT}
 BACKEND_PORT=${BACKEND_PORT}
 DB_PORT=${DB_PORT}
 DB_NAME=${DB_NAME}
@@ -289,7 +282,9 @@ POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
 POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
 WEB_ASSET_NAME=${WEB_ASSET_NAME}
-APP_BASE_URL=http://${public_ip}:${SERVER_PORT}
+PUBLIC_IP=${public_ip}
+PUBLIC_HOST=${public_host}
+APP_BASE_URL=https://${public_host}
 EOF
   ${SUDO} chmod 0600 "${CONFIG_ROOT}/install.env"
 }
@@ -324,30 +319,33 @@ maybe_open_ufw() {
   local status
   status="$(${SUDO} ufw status 2>/dev/null | head -n1 || true)"
   if [[ "${status}" == "Status: active" ]]; then
-    log "Opening TCP port ${SERVER_PORT} in UFW"
-    ${SUDO} ufw allow "${SERVER_PORT}/tcp" >/dev/null
+    log "Opening TCP ports 80 and 443 in UFW"
+    ${SUDO} ufw allow 80/tcp >/dev/null
+    ${SUDO} ufw allow 443/tcp >/dev/null
   fi
 }
 
 main() {
   local version
   local public_ip
+  local public_host
   local db_password
 
   version="$(detect_release_version)"
   public_ip="$(detect_public_ip)"
+  public_host="$(detect_public_host "${public_ip}")"
   db_password="${DB_PASSWORD:-$(generate_password)}"
 
   log "Installing Family Messenger ${version}"
   install_docker
   install_java
-  install_nginx
+  install_caddy
   ensure_user_and_dirs
   write_schema "${version}"
   write_postgres_compose "${db_password}"
   write_backend_env "${db_password}"
   write_systemd_unit
-  write_nginx_config
+  write_caddy_config "${public_host}"
   download_jar "${version}"
   download_web "${version}"
 
@@ -359,15 +357,15 @@ main() {
   ${SUDO} systemctl daemon-reload
   ${SUDO} systemctl enable "${SYSTEMD_UNIT_NAME}"
   ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
-  ${SUDO} nginx -t
-  ${SUDO} systemctl restart nginx
+  ${SUDO} caddy validate --config /etc/caddy/Caddyfile
+  ${SUDO} systemctl restart caddy
   maybe_open_ufw
-  write_install_state "${version}" "${public_ip}"
+  write_install_state "${version}" "${public_ip}" "${public_host}"
 
   log "Installation complete"
   printf '\n'
-  printf 'Open in browser: http://%s:%s\n' "${public_ip}" "${SERVER_PORT}"
-  printf 'Backend health:   http://%s:%s/api/health\n' "${public_ip}" "${SERVER_PORT}"
+  printf 'Open in browser: https://%s\n' "${public_host}"
+  printf 'Backend health:   https://%s/api/health\n' "${public_host}"
   printf '\n'
   printf 'Saved files:\n'
   printf '  - %s/backend.env\n' "${CONFIG_ROOT}"

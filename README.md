@@ -62,12 +62,13 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 
 Скрипт:
 
-- ставит Docker, Java runtime и nginx
+- ставит Docker, Java runtime и Caddy
 - поднимает Postgres
 - скачивает готовый `family-messenger-backend-all.jar` из GitHub Releases
-- скачивает готовый web bundle из GitHub Releases
-- создаёт `systemd` service и публикует сайт на `http://<server-ip>:8080`
-- печатает итоговый URL вида `http://<server-ip>:8080`
+- скачивает готовый production web bundle из GitHub Releases
+- создаёт `systemd` service
+- публикует сайт по HTTPS на адресе вида `https://<server-ip-as-dashes>.sslip.io`
+- печатает итоговый URL вида `https://<server-ip-as-dashes>.sslip.io`
 
 Обновление:
 
