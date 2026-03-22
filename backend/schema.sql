@@ -127,3 +127,20 @@ CREATE TABLE IF NOT EXISTS sync_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_events_family_id_id ON sync_events(family_id, id);
+
+CREATE TABLE IF NOT EXISTS client_logs (
+    id BIGSERIAL PRIMARY KEY,
+    family_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    device_id BIGINT NOT NULL,
+    event_id VARCHAR(64) NOT NULL,
+    level VARCHAR(16) NOT NULL,
+    tag VARCHAR(128) NOT NULL,
+    message TEXT NOT NULL,
+    details TEXT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_client_logs_device_event ON client_logs(device_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_client_logs_family_user_created_at ON client_logs(family_id, user_id, created_at);

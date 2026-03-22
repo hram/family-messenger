@@ -1,6 +1,7 @@
 package app
 
 import com.familymessenger.contract.ContactSummary
+import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 
 class AppViewModel(
     private val platformInfo: PlatformInfo,
+    private val localDatabase: LocalDatabase,
     private val settingsRepository: ClientSettingsRepository,
     private val sessionStore: SessionStore,
     private val contactsRepository: ContactsRepository,
@@ -35,6 +37,10 @@ class AppViewModel(
     private val sendQuickActionUseCase: SendQuickActionUseCase,
     private val shareLocationUseCase: ShareLocationUseCase,
 ) {
+    private companion object {
+        const val LOG_TAG_UNREAD = "FamilyMessengerUnread"
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutableState = MutableStateFlow(
         AppUiState(
@@ -48,6 +54,75 @@ class AppViewModel(
     val state: StateFlow<AppUiState> = mutableState.asStateFlow()
 
     init {
+        localDatabase.snapshots
+            .onEach { snapshot ->
+                val contacts = snapshot.contacts.map { it.contact }
+                val selectedContactId = mutableState.value.selectedContactId
+                val selectedContact = selectedContactId?.let { selectedId ->
+                    contacts.firstOrNull { it.user.id == selectedId }
+                }
+                val currentUserId = sessionStore.currentSession()?.auth?.user?.id
+                val unreadCounts = if (currentUserId != null) {
+                    snapshot.messages
+                        .map { it.payload }
+                        .filter { it.senderUserId != currentUserId }
+                        .filter { payload ->
+                            val chatId = if (payload.recipientUserId == FAMILY_GROUP_CHAT_ID) {
+                                FAMILY_GROUP_CHAT_ID
+                            } else {
+                                payload.senderUserId
+                            }
+                            val lastReadAt = snapshot.lastReadAtByChat[chatId]
+                            val createdAt = payload.createdAt
+                            lastReadAt == null || createdAt == null || createdAt > lastReadAt
+                        }
+                        .groupingBy {
+                            if (it.recipientUserId == FAMILY_GROUP_CHAT_ID) FAMILY_GROUP_CHAT_ID else it.senderUserId
+                        }
+                        .eachCount()
+                } else {
+                    emptyMap()
+                }
+                if (unreadCounts.isNotEmpty() || snapshot.lastReadAtByChat.isNotEmpty()) {
+                    clientDiagnosticsInfo(
+                        LOG_TAG_UNREAD,
+                        "snapshot currentUserId=$currentUserId selectedContactId=$selectedContactId unreadCounts=$unreadCounts lastReadAtByChat=${snapshot.lastReadAtByChat}",
+                    )
+                }
+                mutableState.value = mutableState.value.copy(
+                    screen = if (selectedContact == null && mutableState.value.screen == Screen.CHAT) Screen.CONTACTS else mutableState.value.screen,
+                    contacts = contacts,
+                    unreadCounts = unreadCounts,
+                    selectedContactId = selectedContact?.user?.id,
+                    selectedContactName = selectedContact?.user?.displayName,
+                    messages = snapshot.messages
+                        .map { it.payload }
+                        .filter { payload ->
+                            when {
+                                currentUserId == null || selectedContactId == null || selectedContact == null -> false
+                                selectedContactId == FAMILY_GROUP_CHAT_ID -> payload.recipientUserId == FAMILY_GROUP_CHAT_ID
+                                else ->
+                                    (payload.senderUserId == currentUserId && payload.recipientUserId == selectedContactId) ||
+                                        (payload.senderUserId == selectedContactId && payload.recipientUserId == currentUserId)
+                            }
+                        }
+                        .sortedBy { it.createdAt?.toEpochMilliseconds() ?: 0L },
+                    pendingMessageCount = snapshot.pendingMessages.size,
+                    syncCursor = snapshot.syncState.sinceId,
+                )
+                if (
+                    mutableState.value.screen == Screen.CHAT &&
+                    selectedContactId != null &&
+                    (unreadCounts[selectedContactId] ?: 0) > 0
+                ) {
+                    scope.launch {
+                        runCatching { messagesRepository.markConversationRead(selectedContactId) }
+                        refreshCurrentConversation()
+                    }
+                }
+            }
+            .launchIn(scope)
+
         sessionStore.session
             .onEach { session ->
                 val settings = settingsRepository.settings()
@@ -105,6 +180,7 @@ class AppViewModel(
                         screen = Screen.CONTACTS,
                         currentUser = session.auth.user,
                         contacts = contacts,
+                        unreadCounts = emptyMap(),
                         errorMessage = null,
                     )
                 }.onFailure {
@@ -114,6 +190,7 @@ class AppViewModel(
                         screen = fallbackLoggedOutScreen(),
                         currentUser = null,
                         contacts = emptyList(),
+                        unreadCounts = emptyMap(),
                         messages = emptyList(),
                         selectedContactId = null,
                         selectedContactName = null,
@@ -238,6 +315,7 @@ class AppViewModel(
                 screen = Screen.CONTACTS,
                 currentUser = session.auth.user,
                 contacts = contacts,
+                unreadCounts = emptyMap(),
                 errorMessage = null,
                 statusMessage = "Сессия активна",
             )
@@ -250,6 +328,7 @@ class AppViewModel(
             mutableState.value = mutableState.value.copy(
                 screen = Screen.CONTACTS,
                 contacts = contacts,
+                unreadCounts = emptyMap(),
                 selectedContactId = null,
                 selectedContactName = null,
                 messages = emptyList(),
@@ -270,6 +349,7 @@ class AppViewModel(
                 draftMessage = "",
             )
             runCatching { messagesRepository.markConversationDelivered(contact.user.id) }
+            runCatching { messagesRepository.markConversationRead(contact.user.id) }
             refreshCurrentConversation()
         }
     }
@@ -416,6 +496,7 @@ class AppViewModel(
                 screen = fallbackLoggedOutScreen(),
                 currentUser = null,
                 contacts = emptyList(),
+                unreadCounts = emptyMap(),
                 messages = emptyList(),
                 selectedContactId = null,
                 selectedContactName = null,

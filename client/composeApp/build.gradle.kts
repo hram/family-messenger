@@ -66,6 +66,7 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(project(":backend"))
             implementation(libs.junit)
+            implementation("io.ktor:ktor-client-mock:3.0.3")
             implementation(libs.ktor.server.core)
             implementation(libs.ktor.server.netty)
             implementation("com.h2database:h2:2.3.232")

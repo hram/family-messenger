@@ -814,6 +814,40 @@ class BackendIntegrationTest {
     }
 
     @Test
+    fun clientLogsAreStoredForAuthenticatedUser() = backendTestApp {
+        val parent = login(
+            inviteCode = "PARENT-DEMO",
+            platform = "android",
+        ).json()
+        val parentToken = parent.token()
+        val parentUserId = parent.data().req("user").obj().req("id").long()
+
+        val response = authorizedPost(
+            path = "/api/client-logs",
+            token = parentToken,
+            body = """
+                {
+                  "entries": [
+                    {
+                      "eventId": "${UUID.randomUUID()}",
+                      "level": "error",
+                      "tag": "FamilyMessengerUnread",
+                      "message": "badge did not clear",
+                      "details": "contactId=2",
+                      "occurredAt": "2026-03-22T20:30:00Z"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.json().success())
+        assertEquals(1, queryClientLogCount(parentUserId))
+        assertEquals("FamilyMessengerUnread", latestClientLogTag(parentUserId))
+    }
+
+    @Test
     fun authEndpointsRespectRateLimit() = backendTestApp(
         authRateLimitMaxRequests = 2,
         authRateLimitWindowSeconds = 60,
@@ -1000,6 +1034,34 @@ private fun insertInvite(
         }
     }
 }
+
+private fun queryClientLogCount(
+    userId: Long,
+    jdbcUrl: String = checkNotNull(currentTestJdbcUrl) { "No active test JDBC URL" },
+): Int =
+    DriverManager.getConnection(jdbcUrl, "sa", "").use { connection ->
+        connection.prepareStatement("SELECT COUNT(*) FROM client_logs WHERE user_id = ?").useAndReturn { statement ->
+            statement.setLong(1, userId)
+            statement.executeQuery().use { resultSet ->
+                check(resultSet.next())
+                resultSet.getInt(1)
+            }
+        }
+    }
+
+private fun latestClientLogTag(
+    userId: Long,
+    jdbcUrl: String = checkNotNull(currentTestJdbcUrl) { "No active test JDBC URL" },
+): String =
+    DriverManager.getConnection(jdbcUrl, "sa", "").use { connection ->
+        connection.prepareStatement("SELECT tag FROM client_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1").useAndReturn { statement ->
+            statement.setLong(1, userId)
+            statement.executeQuery().use { resultSet ->
+                check(resultSet.next())
+                resultSet.getString("tag")
+            }
+        }
+    }
 
 private fun resetTestDatabase(jdbcUrl: String) {
     DriverManager.getConnection(jdbcUrl, "sa", "").use { connection ->

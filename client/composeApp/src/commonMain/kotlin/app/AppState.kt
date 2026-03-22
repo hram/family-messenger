@@ -69,6 +69,7 @@ data class AppUiState(
     val settings: SettingsState = SettingsState(),
     val currentUser: UserProfile? = null,
     val contacts: List<ContactSummary> = emptyList(),
+    val unreadCounts: Map<Long, Int> = emptyMap(),
     val selectedContactId: Long? = null,
     val selectedContactName: String? = null,
     val messages: List<MessagePayload> = emptyList(),

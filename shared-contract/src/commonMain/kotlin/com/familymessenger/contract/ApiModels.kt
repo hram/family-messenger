@@ -99,6 +99,15 @@ enum class MessageStatus {
 }
 
 @Serializable
+enum class ClientLogLevel {
+    @SerialName("info")
+    INFO,
+
+    @SerialName("error")
+    ERROR,
+}
+
+@Serializable
 enum class QuickActionCode {
     @SerialName("IM_OUT")
     IM_OUT,
@@ -184,6 +193,16 @@ data class SystemEventPayload(
     val type: String,
     val createdAt: Instant,
     val message: String,
+)
+
+@Serializable
+data class ClientLogEntry(
+    val eventId: String,
+    val level: ClientLogLevel,
+    val tag: String,
+    val message: String,
+    val details: String? = null,
+    val occurredAt: Instant,
 )
 
 @Serializable

@@ -8,6 +8,9 @@ import com.familymessenger.contract.AdminRemoveMemberRequest
 import com.familymessenger.contract.ApiError
 import com.familymessenger.contract.ApiResponse
 import com.familymessenger.contract.AuthPayload
+import com.familymessenger.contract.ClientLogEntry
+import com.familymessenger.contract.ClientLogLevel
+import com.familymessenger.contract.ClientLogsRequest
 import com.familymessenger.contract.ContactsResponse
 import com.familymessenger.contract.ErrorCode
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
@@ -75,6 +78,7 @@ import org.koin.dsl.koinApplication
 private const val LOCAL_DB_KEY = "client.local.db.v1"
 private const val SESSION_KEY = "client.session.v1"
 private const val LOG_TAG_API = "FamilyMessengerApi"
+private const val LOG_TAG_UNREAD = "FamilyMessengerUnread"
 
 private val clientJson = Json {
     ignoreUnknownKeys = true
@@ -115,6 +119,16 @@ data class PendingMessage(
 )
 
 @Serializable
+data class PendingClientLog(
+    val eventId: String,
+    val level: ClientLogLevel,
+    val tag: String,
+    val message: String,
+    val details: String? = null,
+    val occurredAt: Instant,
+)
+
+@Serializable
 data class SyncState(
     val sinceId: Long = 0,
 )
@@ -131,7 +145,9 @@ data class LocalDatabaseSnapshot(
     val contacts: List<StoredContact> = emptyList(),
     val messages: List<StoredMessage> = emptyList(),
     val pendingMessages: List<PendingMessage> = emptyList(),
+    val pendingClientLogs: List<PendingClientLog> = emptyList(),
     val syncState: SyncState = SyncState(),
+    val lastReadAtByChat: Map<Long, Instant> = emptyMap(),
     val settings: LocalSettings = LocalSettings(),
 )
 
@@ -241,19 +257,22 @@ class ApiExecutor(
                     platformLogInfo(LOG_TAG_API, "Request completed successfully on attempt=$attempt")
                     return data
                 }
-                platformLogError(LOG_TAG_API, "API returned error response on attempt=$attempt code=${response.error?.code} message=${response.error?.message}")
+                clientDiagnosticsError(
+                    LOG_TAG_API,
+                    "API returned error response on attempt=$attempt code=${response.error?.code} message=${response.error?.message}",
+                )
                 throw mapError(response.error)
             } catch (error: HttpRequestTimeoutException) {
                 lastNetworkException = error
-                platformLogError(LOG_TAG_API, "HTTP timeout on attempt=$attempt", error)
+                clientDiagnosticsError(LOG_TAG_API, "HTTP timeout on attempt=$attempt", error)
             } catch (error: AppException) {
-                platformLogError(LOG_TAG_API, "Application error on attempt=$attempt: ${error.message}", error)
+                clientDiagnosticsError(LOG_TAG_API, "Application error on attempt=$attempt: ${error.message}", error)
                 throw error
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 lastNetworkException = error
-                platformLogError(LOG_TAG_API, "Network failure on attempt=$attempt: ${error.message}", error)
+                clientDiagnosticsError(LOG_TAG_API, "Network failure on attempt=$attempt: ${error.message}", error)
             }
             delay(attempt * 300L)
         }
@@ -405,6 +424,26 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    suspend fun sendClientLogs(entries: List<ClientLogEntry>): AckResponse =
+        try {
+            val response: ApiResponse<AckResponse> = httpClient.post(url("/api/client-logs")) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(ClientLogsRequest(entries))
+            }.body()
+            if (response.success && response.data != null) {
+                requireNotNull(response.data)
+            } else {
+                throw AppException.Server(response.error?.message ?: "Failed to send client logs")
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: AppException) {
+            throw error
+        } catch (error: Throwable) {
+            throw AppException.Network(error.message ?: "Failed to send client logs")
+        }
+
     suspend fun shareLocation(location: LocationPayload): AckResponse =
         executor.execute {
             httpClient.post(url("/api/location/share")) {
@@ -490,6 +529,7 @@ class SessionRepository(
                 contacts = emptyList(),
                 messages = emptyList(),
                 pendingMessages = emptyList(),
+                pendingClientLogs = emptyList(),
                 syncState = SyncState(),
             )
         }
@@ -537,6 +577,59 @@ class AdminRepository(
 
     suspend fun removeMember(masterPassword: String, inviteCode: String): AdminMembersResponse =
         apiClient.removeMember(masterPassword, inviteCode)
+}
+
+class ClientDiagnosticsRepository(
+    private val apiClient: FamilyMessengerApiClient,
+    private val localDatabase: LocalDatabase,
+    private val sessionStore: SessionStore,
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    fun record(level: ClientLogLevel, tag: String, message: String, details: String?) {
+        scope.launch {
+            localDatabase.update { snapshot ->
+                val updated = snapshot.pendingClientLogs + PendingClientLog(
+                    eventId = randomUuid(),
+                    level = level,
+                    tag = tag.take(128),
+                    message = message.take(8_000),
+                    details = details?.take(16_000),
+                    occurredAt = Clock.System.now(),
+                )
+                snapshot.copy(pendingClientLogs = updated.takeLast(400))
+            }
+            runCatching { flush() }
+        }
+    }
+
+    suspend fun flush() {
+        if (sessionStore.currentSession() == null) return
+        while (true) {
+            val batch = localDatabase.snapshot().pendingClientLogs.take(50)
+            if (batch.isEmpty()) return
+            apiClient.sendClientLogs(
+                batch.map {
+                    ClientLogEntry(
+                        eventId = it.eventId,
+                        level = it.level,
+                        tag = it.tag,
+                        message = it.message,
+                        details = it.details,
+                        occurredAt = it.occurredAt,
+                    )
+                },
+            )
+            val sentIds = batch.map { it.eventId }.toSet()
+            localDatabase.update { snapshot ->
+                snapshot.copy(pendingClientLogs = snapshot.pendingClientLogs.filterNot { it.eventId in sentIds })
+            }
+        }
+    }
+
+    fun close() {
+        scope.cancel()
+    }
 }
 
 class ContactsRepository(
@@ -643,7 +736,8 @@ class MessagesRepository(
 
     suspend fun markConversationRead(contactId: Long) {
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return
-        val messageIds = localDatabase.snapshot().messages
+        val snapshot = localDatabase.snapshot()
+        val incomingMessages = snapshot.messages
             .map { it.payload }
             .filter {
                 if (contactId == FAMILY_GROUP_CHAT_ID) {
@@ -652,18 +746,39 @@ class MessagesRepository(
                     it.senderUserId == contactId && it.recipientUserId == currentUserId
                 }
             }
+        val messageIds = incomingMessages
             .mapNotNull { it.id }
             .take(200)
-        if (messageIds.isEmpty()) return
-        apiClient.markRead(messageIds)
+        clientDiagnosticsInfo(
+            LOG_TAG_UNREAD,
+            "markConversationRead contactId=$contactId currentUserId=$currentUserId incoming=${incomingMessages.size} ids=$messageIds",
+        )
+        if (messageIds.isNotEmpty()) {
+            apiClient.markRead(messageIds)
+        }
+        val lastReadAt = incomingMessages.maxOfOrNull { it.createdAt ?: Clock.System.now() } ?: Clock.System.now()
+        clientDiagnosticsInfo(
+            LOG_TAG_UNREAD,
+            "markConversationRead apply contactId=$contactId lastReadAt=$lastReadAt",
+        )
         localDatabase.update { snapshot ->
             snapshot.copy(messages = snapshot.messages.advanceStatuses(messageIds, MessageStatus.READ))
+                .copy(lastReadAtByChat = snapshot.lastReadAtByChat + (contactId to lastReadAt))
         }
     }
 
     suspend fun sync(): SyncPayload {
         val sinceId = localDatabase.snapshot().syncState.sinceId
         val payload = apiClient.sync(sinceId)
+        if (payload.messages.isNotEmpty()) {
+            val summary = payload.messages.joinToString(separator = ";") {
+                "id=${it.id},sender=${it.senderUserId},recipient=${it.recipientUserId},status=${it.status},createdAt=${it.createdAt}"
+            }
+            clientDiagnosticsInfo(
+                LOG_TAG_UNREAD,
+                "sync sinceId=$sinceId nextSinceId=${payload.nextSinceId} messages=${payload.messages.size} [$summary]",
+            )
+        }
         localDatabase.update { snapshot ->
             val merged = snapshot.messages
                 .mergePayloads(payload.messages)
@@ -734,9 +849,11 @@ class DeviceRepository(
 class LoginUseCase(
     private val sessionRepository: SessionRepository,
     private val syncEngine: SyncEngine,
+    private val clientDiagnosticsRepository: ClientDiagnosticsRepository,
 ) {
     suspend operator fun invoke(inviteCode: String): StoredSession {
         val session = sessionRepository.login(inviteCode)
+        runCatching { clientDiagnosticsRepository.flush() }
         syncEngine.kick()
         return session
     }
@@ -823,6 +940,7 @@ class SyncEngine(
     private val deviceRepository: DeviceRepository,
     private val notificationService: NotificationService,
     private val localDatabase: LocalDatabase,
+    private val clientDiagnosticsRepository: ClientDiagnosticsRepository,
 ) {
     private var pollingJob: Job? = null
     private var cycles = 0
@@ -869,6 +987,7 @@ class SyncEngine(
         if (settings.pushEnabled) {
             deviceRepository.updatePushToken("optional-local-placeholder")
         }
+        clientDiagnosticsRepository.flush()
     }
 }
 
@@ -977,6 +1096,8 @@ class ClientApp private constructor(
 
     fun close() {
         viewModel.close()
+        runCatching { koinHandle.koin.get<ClientDiagnosticsRepository>().close() }
+        ClientDiagnosticsBridge.clear()
         koinHandle.close()
     }
 
@@ -984,6 +1105,10 @@ class ClientApp private constructor(
         fun create(platformServices: PlatformServices): ClientApp {
             val app = koinApplication {
                 modules(commonClientModule(platformServices))
+            }
+            val diagnostics = app.koin.get<ClientDiagnosticsRepository>()
+            ClientDiagnosticsBridge.install { level, tag, message, details ->
+                diagnostics.record(level, tag, message, details)
             }
             return ClientApp(app)
         }
@@ -1006,12 +1131,13 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { SessionRepository(get(), get(), get(), get()) }
     single { SetupRepository(get()) }
     single { AdminRepository(get()) }
+    single { ClientDiagnosticsRepository(get(), get(), get()) }
     single { ContactsRepository(get(), get()) }
     single { MessagesRepository(get(), get(), get()) }
     single { PresenceRepository(get(), get()) }
     single { DeviceRepository(get()) }
-    single { SyncEngine(get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { LoginUseCase(get(), get()) }
+    single { SyncEngine(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { LoginUseCase(get(), get(), get()) }
     single { LoadSetupStatusUseCase(get()) }
     single { BootstrapSystemUseCase(get()) }
     single { VerifyAdminAccessUseCase(get()) }
@@ -1024,6 +1150,7 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single {
         AppViewModel(
             platformInfo = get(),
+            localDatabase = get(),
             settingsRepository = get(),
             sessionStore = get(),
             contactsRepository = get(),

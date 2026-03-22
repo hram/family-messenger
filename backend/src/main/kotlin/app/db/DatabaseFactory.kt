@@ -34,6 +34,7 @@ class DatabaseFactory(
                     LocationEventsTable,
                     AuthTokensTable,
                     SyncEventsTable,
+                    ClientLogsTable,
                 )
 
                 exec("DROP INDEX IF EXISTS ux_devices_family_name_platform")

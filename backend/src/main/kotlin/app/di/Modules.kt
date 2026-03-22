@@ -4,9 +4,11 @@ import app.config.AppConfig
 import app.db.DatabaseFactory
 import app.repository.AdminRepository
 import app.repository.AuthRepository
+import app.repository.ClientLogRepository
 import app.repository.DeviceRepository
 import app.repository.ExposedAdminRepository
 import app.repository.ExposedAuthRepository
+import app.repository.ExposedClientLogRepository
 import app.repository.ExposedDeviceRepository
 import app.repository.ExposedMessageRepository
 import app.repository.ExposedPresenceRepository
@@ -18,6 +20,7 @@ import app.repository.ProfileRepository
 import app.repository.SetupRepository
 import app.service.AdminService
 import app.service.AuthService
+import app.service.ClientLogService
 import app.service.DeviceService
 import app.service.MessageService
 import app.service.PresenceService
@@ -37,6 +40,7 @@ fun backendModule(appConfig: AppConfig) = module {
 
     single<AdminRepository> { ExposedAdminRepository() }
     single<AuthRepository> { ExposedAuthRepository() }
+    single<ClientLogRepository> { ExposedClientLogRepository() }
     single<ProfileRepository> { ExposedProfileRepository() }
     single<MessageRepository> { ExposedMessageRepository() }
     single<PresenceRepository> { ExposedPresenceRepository() }
@@ -45,6 +49,7 @@ fun backendModule(appConfig: AppConfig) = module {
 
     single { AdminService(get()) }
     single { AuthService(get(), get(), get()) }
+    single { ClientLogService(get()) }
     single { ProfileService(get()) }
     single { MessageService(get()) }
     single { PresenceService(get()) }

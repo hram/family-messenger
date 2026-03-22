@@ -4,6 +4,7 @@ import app.model.SessionPrincipal
 import com.familymessenger.contract.AdminCreateMemberResponse
 import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AuthPayload
+import com.familymessenger.contract.ClientLogEntry
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.MessagePayload
@@ -57,6 +58,10 @@ interface PresenceRepository {
 
 interface DeviceRepository {
     suspend fun updatePushToken(principal: SessionPrincipal, pushToken: String?, now: Instant)
+}
+
+interface ClientLogRepository {
+    suspend fun store(principal: SessionPrincipal, entries: List<ClientLogEntry>, now: Instant): Int
 }
 
 interface SetupRepository {

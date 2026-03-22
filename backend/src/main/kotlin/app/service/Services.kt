@@ -9,6 +9,7 @@ import app.error.ValidationException
 import app.model.SessionPrincipal
 import app.repository.AdminRepository
 import app.repository.AuthRepository
+import app.repository.ClientLogRepository
 import app.repository.DeviceRepository
 import app.repository.MessageRepository
 import app.repository.PresenceRepository
@@ -20,6 +21,7 @@ import com.familymessenger.contract.AdminCreateMemberResponse
 import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AdminRemoveMemberRequest
 import com.familymessenger.contract.AuthPayload
+import com.familymessenger.contract.ClientLogsRequest
 import com.familymessenger.contract.ContactsResponse
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.LoginRequest
@@ -149,6 +151,16 @@ class DeviceService(
     suspend fun updatePushToken(principal: SessionPrincipal, request: UpdatePushTokenRequest): AckResponse {
         validatePushToken(request.pushToken)
         repository.updatePushToken(principal, request.pushToken?.trim(), Clock.System.now())
+        return AckResponse(true)
+    }
+}
+
+class ClientLogService(
+    private val repository: ClientLogRepository,
+) {
+    suspend fun ingest(principal: SessionPrincipal, request: ClientLogsRequest): AckResponse {
+        validateClientLogs(request)
+        repository.store(principal, request.entries, Clock.System.now())
         return AckResponse(true)
     }
 }
@@ -375,6 +387,27 @@ private fun validateMessageRequest(request: SendMessageRequest) {
 private fun validateMessageIds(ids: List<Long>) {
     if (ids.isEmpty() || ids.size > 200 || ids.any { it <= 0 }) {
         throw ValidationException("messageIds must contain 1..200 positive ids")
+    }
+}
+
+private fun validateClientLogs(request: ClientLogsRequest) {
+    if (request.entries.isEmpty() || request.entries.size > 200) {
+        throw ValidationException("entries must contain between 1 and 200 log records")
+    }
+    request.entries.forEach { entry ->
+        if (entry.eventId.isBlank() || entry.eventId.length > 64) {
+            throw ValidationException("eventId must be between 1 and 64 characters")
+        }
+        if (entry.tag.isBlank() || entry.tag.length > 128) {
+            throw ValidationException("tag must be between 1 and 128 characters")
+        }
+        if (entry.message.isBlank() || entry.message.length > 8000) {
+            throw ValidationException("message must be between 1 and 8000 characters")
+        }
+        val details = entry.details
+        if (details != null && details.length > 16000) {
+            throw ValidationException("details must be at most 16000 characters")
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package app.repository
 
 import app.db.AuthTokensTable
+import app.db.ClientLogsTable
 import app.db.DevicesTable
 import app.db.FamiliesTable
 import app.db.InvitesTable
@@ -19,6 +20,7 @@ import com.familymessenger.contract.AdminCreateMemberResponse
 import com.familymessenger.contract.AdminMemberSummary
 import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AuthPayload
+import com.familymessenger.contract.ClientLogEntry
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.DeviceSession
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
@@ -52,6 +54,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -524,6 +527,30 @@ class ExposedDeviceRepository : DeviceRepository {
             it[DevicesTable.pushToken] = pushToken
             it[updatedAt] = now
         }
+    }
+}
+
+class ExposedClientLogRepository : ClientLogRepository {
+    override suspend fun store(principal: SessionPrincipal, entries: List<ClientLogEntry>, now: Instant): Int = dbQuery {
+        var stored = 0
+        entries.forEach { entry ->
+            val inserted = ClientLogsTable.insertIgnore {
+                it[familyId] = principal.familyId
+                it[userId] = principal.userId
+                it[deviceId] = principal.deviceId
+                it[eventId] = entry.eventId
+                it[level] = entry.level.name
+                it[tag] = entry.tag
+                it[message] = entry.message
+                it[details] = entry.details
+                it[occurredAt] = entry.occurredAt
+                it[createdAt] = now
+            }
+            if (inserted.insertedCount > 0) {
+                stored += 1
+            }
+        }
+        stored
     }
 }
 

@@ -1,5 +1,6 @@
 package app
 
+import androidx.compose.runtime.Composable
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
@@ -56,3 +57,6 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
     NSLog("ERROR [%@] %@", tag, message)
     throwable?.message?.let { NSLog("ERROR [%@] cause=%@", tag, it) }
 }
+
+@Composable
+actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

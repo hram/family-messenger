@@ -108,6 +108,11 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
             ) {
                 val isWide = maxWidth > 600.dp
 
+                platformBackHandler(
+                    enabled = !isWide && state.screen in setOf(Screen.CHAT, Screen.SETTINGS, Screen.ADMIN),
+                    onBack = viewModel::backToContacts,
+                )
+
                 when {
                     state.screen == Screen.ONBOARDING -> OnboardingScreen(state, viewModel)
                     state.screen == Screen.SETUP -> SetupScreen(state, viewModel)
@@ -203,6 +208,7 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
             )
             ContactsPanel(
                 contacts = state.contacts,
+                unreadCounts = state.unreadCounts,
                 selectedContactId = state.selectedContactId,
                 onContactClick = viewModel::openChat,
             )
@@ -610,6 +616,7 @@ private fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
         )
         ContactsPanel(
             contacts = state.contacts,
+            unreadCounts = state.unreadCounts,
             onContactClick = viewModel::openChat,
         )
     }
@@ -619,6 +626,7 @@ private fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
 @Composable
 private fun ContactsPanel(
     contacts: List<ContactSummary>,
+    unreadCounts: Map<Long, Int> = emptyMap(),
     selectedContactId: Long? = null,  // highlights active row in wide layout (AppState.kt:44)
     onContactClick: (ContactSummary) -> Unit,
 ) {
@@ -652,6 +660,7 @@ private fun ContactsPanel(
             items(contacts) { contact ->
                 ContactRow(
                     contact = contact,
+                    unreadCount = unreadCounts[contact.user.id] ?: 0,
                     isSelected = contact.user.id == selectedContactId,
                     onClick = { onContactClick(contact) },
                 )
@@ -664,6 +673,7 @@ private fun ContactsPanel(
 @Composable
 private fun ContactRow(
     contact: ContactSummary,
+    unreadCount: Int = 0,
     isSelected: Boolean = false,
     onClick: () -> Unit,
 ) {
@@ -705,6 +715,23 @@ private fun ContactRow(
                 color = if (contact.isOnline || contact.isFamilyGroup()) TgBlue else TextSecondary,
             )
         }
+
+        if (unreadCount > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(TgBlue)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    unreadCount.toString(),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 
@@ -735,20 +762,6 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Quick action chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            state.availableQuickActions().forEach { code ->
-                TgChip(label = code.name, onClick = { viewModel.sendQuickAction(code) })
-            }
-            TgChip(label = "Location", icon = AppIcons.Location, onClick = viewModel::shareLocation)
-        }
-
         // Messages area
         Box(
             modifier = Modifier

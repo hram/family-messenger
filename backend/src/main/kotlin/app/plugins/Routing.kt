@@ -3,6 +3,7 @@ package app.plugins
 import app.config.AppConfig
 import app.routes.adminRoutes
 import app.routes.authRoutes
+import app.routes.clientLogRoutes
 import app.routes.deviceRoutes
 import app.routes.healthRoutes
 import app.routes.messageRoutes
@@ -22,6 +23,7 @@ fun Application.configureRouting(appConfig: AppConfig) {
     val messageService by inject<app.service.MessageService>()
     val presenceService by inject<app.service.PresenceService>()
     val deviceService by inject<app.service.DeviceService>()
+    val clientLogService by inject<app.service.ClientLogService>()
     val setupService by inject<app.service.SetupService>()
 
     routing {
@@ -35,6 +37,7 @@ fun Application.configureRouting(appConfig: AppConfig) {
                 messageRoutes(messageService)
                 presenceRoutes(presenceService)
                 deviceRoutes(deviceService)
+                clientLogRoutes(clientLogService)
             }
         }
     }

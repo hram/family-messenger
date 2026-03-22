@@ -3,6 +3,8 @@ package app
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -60,4 +62,9 @@ actual fun platformLogInfo(tag: String, message: String) {
 
 actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
     Log.e(tag, message, throwable)
+}
+
+@Composable
+actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    BackHandler(enabled = enabled, onBack = onBack)
 }

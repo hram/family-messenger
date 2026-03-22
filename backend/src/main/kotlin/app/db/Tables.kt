@@ -141,4 +141,24 @@ object SyncEventsTable : Table("sync_events") {
     }
 }
 
+object ClientLogsTable : Table("client_logs") {
+    val id = long("id").autoIncrement()
+    val familyId = long("family_id").index()
+    val userId = long("user_id").index()
+    val deviceId = long("device_id").index()
+    val eventId = varchar("event_id", 64)
+    val level = varchar("level", 16)
+    val tag = varchar("tag", 128)
+    val message = text("message")
+    val details = text("details").nullable()
+    val occurredAt = timestamp("occurred_at")
+    val createdAt = timestamp("created_at")
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        uniqueIndex(deviceId, eventId)
+        index(false, familyId, userId, createdAt)
+    }
+}
+
 fun now(): Instant = Clock.System.now()

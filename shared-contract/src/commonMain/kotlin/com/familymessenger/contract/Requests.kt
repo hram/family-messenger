@@ -61,6 +61,11 @@ data class MarkReadRequest(
 )
 
 @Serializable
+data class ClientLogsRequest(
+    val entries: List<ClientLogEntry>,
+)
+
+@Serializable
 data class ShareLocationRequest(
     val latitude: Double,
     val longitude: Double,

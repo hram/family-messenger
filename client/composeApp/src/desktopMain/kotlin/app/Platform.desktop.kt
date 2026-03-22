@@ -1,5 +1,6 @@
 package app
 
+import androidx.compose.runtime.Composable
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -51,3 +52,6 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
     println("ERROR [$tag] $message")
     throwable?.printStackTrace()
 }
+
+@Composable
+actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
