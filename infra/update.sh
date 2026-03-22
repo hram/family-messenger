@@ -4,6 +4,7 @@ set -euo pipefail
 CONFIG_ROOT="${CONFIG_ROOT:-/etc/family-messenger}"
 SYSTEMD_UNIT_NAME="${SYSTEMD_UNIT_NAME:-family-messenger-backend}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
+REQUESTED_RELEASE_VERSION="${RELEASE_VERSION:-}"
 
 log() {
   printf '[family-messenger] %s\n' "$*"
@@ -24,7 +25,7 @@ fi
 # shellcheck disable=SC1090
 source "${CONFIG_ROOT}/install.env"
 
-RELEASE_VERSION="${RELEASE_VERSION:-}"
+RELEASE_VERSION="${REQUESTED_RELEASE_VERSION}"
 if [[ -z "${RELEASE_VERSION}" ]]; then
   RELEASE_VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
 fi
