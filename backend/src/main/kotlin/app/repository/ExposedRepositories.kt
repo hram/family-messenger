@@ -53,7 +53,7 @@ private const val ENTITY_RECEIPT = "receipt"
 private const val ENTITY_LOCATION = "location"
 
 class ExposedAuthRepository : AuthRepository {
-    override suspend fun registerDevice(
+    override suspend fun login(
         inviteCode: String,
         platform: String,
         pushToken: String?,
@@ -62,84 +62,15 @@ class ExposedAuthRepository : AuthRepository {
         expiresAt: Instant,
         now: Instant,
     ): AuthPayload = dbQuery {
-        val invite = findInvite(inviteCode)
-
-        if (invite[InvitesTable.userId] != null) {
-            throw ConflictException("Invite code is already bound to a user")
-        }
-
-        if (invite[InvitesTable.expiresAt]?.let { it < now } == true) {
-            throw ConflictException("Invite code has expired")
-        }
-
-        val familyId = invite[InvitesTable.familyId]
-
-        val createdUserId = UsersTable.insert {
-            it[UsersTable.familyId] = familyId
-            it[displayName] = invite[InvitesTable.displayName]
-            it[role] = invite[InvitesTable.role]
-            it[isActive] = true
-            it[lastSeenAt] = now
-            it[createdAt] = now
-        }[UsersTable.id]
-
-        val deviceId = DevicesTable.insert {
-            it[DevicesTable.familyId] = familyId
-            it[DevicesTable.userId] = createdUserId
-            it[DevicesTable.platform] = platform
-            it[DevicesTable.pushToken] = pushToken
-            it[lastSeenAt] = now
-            it[createdAt] = now
-            it[updatedAt] = now
-        }[DevicesTable.id]
-
-        InvitesTable.update({ InvitesTable.id eq invite[InvitesTable.id] }) {
-            it[InvitesTable.userId] = createdUserId
-            it[usesCount] = 1
-            it[maxUses] = 1
-        }
-
-        persistToken(createdUserId, deviceId, familyId, tokenHash, expiresAt, now)
-        buildAuthPayload(createdUserId, familyId, rawToken, expiresAt)
-    }
-
-    override suspend fun login(
-        inviteCode: String,
-        platform: String,
-        tokenHash: String,
-        rawToken: String,
-        expiresAt: Instant,
-        now: Instant,
-    ): AuthPayload = dbQuery {
-        val invite = findInvite(inviteCode)
-        val familyId = invite[InvitesTable.familyId]
-        val invitedUserId = invite[InvitesTable.userId]
-            ?: throw UnauthorizedException("Invite code is not registered yet")
-
-        val deviceRow = DevicesTable.join(UsersTable, JoinType.INNER, additionalConstraint = {
-            DevicesTable.userId eq UsersTable.id
-        }).selectAll().where {
-            (DevicesTable.familyId eq familyId) and
-                (DevicesTable.platform eq platform) and
-                (DevicesTable.userId eq invitedUserId) and
-                (UsersTable.isActive eq true)
-        }.orderBy(DevicesTable.updatedAt to SortOrder.DESC)
-            .limit(1)
-            .singleOrNull() ?: throw UnauthorizedException("Unknown invite code or platform")
-
-        val userId = deviceRow[DevicesTable.userId]
-        val deviceId = deviceRow[DevicesTable.id]
-
-        DevicesTable.update({ DevicesTable.id eq deviceId }) {
-            it[lastSeenAt] = now
-            it[updatedAt] = now
-        }
-        UsersTable.update({ UsersTable.id eq userId }) {
-            it[lastSeenAt] = now
-        }
-
-        persistToken(userId, deviceId, familyId, tokenHash, expiresAt, now)
-        buildAuthPayload(userId, familyId, rawToken, expiresAt)
+        authenticateByInvite(
+            inviteCode = inviteCode,
+            platform = platform,
+            pushToken = pushToken,
+            tokenHash = tokenHash,
+            rawToken = rawToken,
+            expiresAt = expiresAt,
+            now = now,
+        )
     }
 
     override suspend fun resolveSession(tokenHash: String, now: Instant): SessionPrincipal? = dbQuery {
@@ -191,6 +122,78 @@ class ExposedAuthRepository : AuthRepository {
         }.singleOrNull() ?: throw UnauthorizedException("Invalid invite code")
 
         return invite
+    }
+
+    private fun authenticateByInvite(
+        inviteCode: String,
+        platform: String,
+        pushToken: String?,
+        tokenHash: String,
+        rawToken: String,
+        expiresAt: Instant,
+        now: Instant,
+    ): AuthPayload {
+        val invite = findInvite(inviteCode)
+
+        if (invite[InvitesTable.expiresAt]?.let { it < now } == true) {
+            throw ConflictException("Invite code has expired")
+        }
+
+        val familyId = invite[InvitesTable.familyId]
+        val userId = invite[InvitesTable.userId] ?: UsersTable.insert {
+            it[UsersTable.familyId] = familyId
+            it[displayName] = invite[InvitesTable.displayName]
+            it[role] = invite[InvitesTable.role]
+            it[isActive] = true
+            it[lastSeenAt] = now
+            it[createdAt] = now
+        }[UsersTable.id].also { createdUserId ->
+            InvitesTable.update({ InvitesTable.id eq invite[InvitesTable.id] }) {
+                it[InvitesTable.userId] = createdUserId
+                it[usesCount] = 1
+                it[maxUses] = 1
+            }
+        }
+
+        val userRow = UsersTable.selectAll().where {
+            (UsersTable.id eq userId) and
+                (UsersTable.familyId eq familyId) and
+                (UsersTable.isActive eq true)
+        }.singleOrNull() ?: throw UnauthorizedException("Invite code is bound to an inactive user")
+
+        val deviceId = DevicesTable.selectAll().where {
+            (DevicesTable.familyId eq familyId) and
+                (DevicesTable.userId eq userId) and
+                (DevicesTable.platform eq platform)
+        }.orderBy(DevicesTable.updatedAt to SortOrder.DESC)
+            .limit(1)
+            .singleOrNull()
+            ?.let { existingDevice ->
+                DevicesTable.update({ DevicesTable.id eq existingDevice[DevicesTable.id] }) {
+                    it[lastSeenAt] = now
+                    it[updatedAt] = now
+                    if (pushToken != null) {
+                        it[DevicesTable.pushToken] = pushToken
+                    }
+                }
+                existingDevice[DevicesTable.id]
+            }
+            ?: DevicesTable.insert {
+                it[DevicesTable.familyId] = familyId
+                it[DevicesTable.userId] = userRow[UsersTable.id]
+                it[DevicesTable.platform] = platform
+                it[DevicesTable.pushToken] = pushToken
+                it[lastSeenAt] = now
+                it[createdAt] = now
+                it[updatedAt] = now
+            }[DevicesTable.id]
+
+        UsersTable.update({ UsersTable.id eq userId }) {
+            it[lastSeenAt] = now
+        }
+
+        persistToken(userId, deviceId, familyId, tokenHash, expiresAt, now)
+        return buildAuthPayload(userId, familyId, rawToken, expiresAt)
     }
 
     private fun persistToken(

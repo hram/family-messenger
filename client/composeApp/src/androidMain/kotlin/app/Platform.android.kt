@@ -2,6 +2,7 @@ package app
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -52,3 +53,11 @@ actual fun createPlatformServices(): PlatformServices {
 }
 
 actual fun randomUuid(): String = UUID.randomUUID().toString()
+
+actual fun platformLogInfo(tag: String, message: String) {
+    Log.i(tag, message)
+}
+
+actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
+    Log.e(tag, message, throwable)
+}

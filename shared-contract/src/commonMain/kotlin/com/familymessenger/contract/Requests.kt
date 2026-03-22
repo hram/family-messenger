@@ -3,16 +3,10 @@ package com.familymessenger.contract
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class RegisterDeviceRequest(
-    val inviteCode: String,
-    val platform: PlatformType,
-    val pushToken: String? = null,
-)
-
-@Serializable
 data class LoginRequest(
     val inviteCode: String,
     val platform: PlatformType,
+    val pushToken: String? = null,
 )
 
 @Serializable

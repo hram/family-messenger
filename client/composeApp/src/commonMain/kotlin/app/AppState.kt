@@ -13,15 +13,9 @@ enum class Screen {
     SETTINGS,
 }
 
-enum class AuthMode {
-    REGISTER,
-    LOGIN,
-}
-
 data class OnboardingFormState(
     val baseUrl: String = "",
     val inviteCode: String = "",
-    val authMode: AuthMode = AuthMode.REGISTER,
 )
 
 data class SettingsState(

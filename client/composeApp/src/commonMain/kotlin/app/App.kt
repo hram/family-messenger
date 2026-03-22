@@ -279,38 +279,6 @@ private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Mode tabs (Register / Login)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White),
-            ) {
-                listOf(AuthMode.REGISTER to "Register", AuthMode.LOGIN to "Login").forEach { (mode, label) ->
-                    val selected = state.onboarding.authMode == mode
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag(
-                                if (mode == AuthMode.REGISTER) AppTestTags.OnboardingRegisterTab
-                                else AppTestTags.OnboardingLoginTab,
-                            )
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) TgBlue else Color.Transparent)
-                            .clickable { viewModel.setAuthMode(mode) }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            label,
-                            color = if (selected) Color.White else TextSecondary,
-                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                            fontSize = 14.sp,
-                        )
-                    }
-                }
-            }
-
             TgTextField(
                 value = state.onboarding.baseUrl,
                 onValueChange = viewModel::updateBaseUrl,
@@ -334,7 +302,7 @@ private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
                 shape = RoundedCornerShape(10.dp),
             ) {
                 Text(
-                    if (state.onboarding.authMode == AuthMode.REGISTER) "Register Device" else "Login",
+                    "Continue",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -350,7 +318,7 @@ private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text("Platform: ${state.platformName}", fontSize = 13.sp, color = TextSecondary)
-                    Text("Offline cache · pending queue · polling sync", fontSize = 13.sp, color = TextSecondary)
+                    Text("Enter your invite code to sign in on this device", fontSize = 13.sp, color = TextSecondary)
                 }
             }
         }

@@ -38,3 +38,7 @@ data class PlatformServices(
 expect fun createPlatformServices(): PlatformServices
 
 expect fun randomUuid(): String
+
+expect fun platformLogInfo(tag: String, message: String)
+
+expect fun platformLogError(tag: String, message: String, throwable: Throwable? = null)

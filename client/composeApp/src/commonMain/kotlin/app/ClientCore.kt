@@ -20,7 +20,6 @@ import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.PresencePingRequest
 import com.familymessenger.contract.ProfileResponse
 import com.familymessenger.contract.QuickActionCode
-import com.familymessenger.contract.RegisterDeviceRequest
 import com.familymessenger.contract.SendMessageRequest
 import com.familymessenger.contract.SendMessageResponse
 import com.familymessenger.contract.ShareLocationRequest
@@ -65,6 +64,7 @@ import org.koin.dsl.koinApplication
 
 private const val LOCAL_DB_KEY = "client.local.db.v1"
 private const val SESSION_KEY = "client.session.v1"
+private const val LOG_TAG_API = "FamilyMessengerApi"
 
 private val clientJson = Json {
     ignoreUnknownKeys = true
@@ -228,17 +228,22 @@ class ApiExecutor(
                 val response = block()
                 val data = response.data
                 if (response.success && data != null) {
+                    platformLogInfo(LOG_TAG_API, "Request completed successfully on attempt=$attempt")
                     return data
                 }
+                platformLogError(LOG_TAG_API, "API returned error response on attempt=$attempt code=${response.error?.code} message=${response.error?.message}")
                 throw mapError(response.error)
             } catch (error: HttpRequestTimeoutException) {
                 lastNetworkException = error
+                platformLogError(LOG_TAG_API, "HTTP timeout on attempt=$attempt", error)
             } catch (error: AppException) {
+                platformLogError(LOG_TAG_API, "Application error on attempt=$attempt: ${error.message}", error)
                 throw error
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 lastNetworkException = error
+                platformLogError(LOG_TAG_API, "Network failure on attempt=$attempt: ${error.message}", error)
             }
             delay(attempt * 300L)
         }
@@ -271,16 +276,9 @@ class FamilyMessengerApiClient(
     private val settingsRepository: ClientSettingsRepository,
     private val executor: ApiExecutor,
 ) {
-    suspend fun registerDevice(request: RegisterDeviceRequest): AuthPayload =
-        executor.execute {
-            httpClient.post(url("/api/auth/register-device")) {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }.body()
-        }
-
     suspend fun login(request: LoginRequest): AuthPayload =
         executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/auth/login platform=${request.platform}")
             httpClient.post(url("/api/auth/login")) {
                 contentType(ContentType.Application.Json)
                 setBody(request)
@@ -289,6 +287,7 @@ class FamilyMessengerApiClient(
 
     suspend fun profile(): ProfileResponse =
         executor.execute {
+            platformLogInfo(LOG_TAG_API, "GET /api/profile/me")
             httpClient.get(url("/api/profile/me")) {
                 authHeader()
             }.body()
@@ -296,6 +295,7 @@ class FamilyMessengerApiClient(
 
     suspend fun contacts(): ContactsResponse =
         executor.execute {
+            platformLogInfo(LOG_TAG_API, "GET /api/contacts")
             httpClient.get(url("/api/contacts")) {
                 authHeader()
             }.body()
@@ -404,16 +404,6 @@ class SessionRepository(
         )
         sessionStore.save(refreshed)
         return refreshed
-    }
-
-    suspend fun registerDevice(inviteCode: String): StoredSession {
-        val auth = apiClient.registerDevice(
-            RegisterDeviceRequest(
-                inviteCode = inviteCode.trim(),
-                platform = platformInfo.type,
-            ),
-        )
-        return persistAuth(auth)
     }
 
     suspend fun login(inviteCode: String): StoredSession {
@@ -634,17 +624,6 @@ class DeviceRepository(
 ) {
     suspend fun updatePushToken(pushToken: String?) {
         apiClient.updatePushToken(pushToken)
-    }
-}
-
-class RegisterDeviceUseCase(
-    private val sessionRepository: SessionRepository,
-    private val syncEngine: SyncEngine,
-) {
-    suspend operator fun invoke(inviteCode: String): StoredSession {
-        val session = sessionRepository.registerDevice(inviteCode)
-        syncEngine.kick()
-        return session
     }
 }
 
@@ -889,7 +868,6 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { PresenceRepository(get(), get()) }
     single { DeviceRepository(get()) }
     single { SyncEngine(get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { RegisterDeviceUseCase(get(), get()) }
     single { LoginUseCase(get(), get()) }
     single { LoadContactsUseCase(get()) }
     single { SendTextMessageUseCase(get()) }
@@ -904,7 +882,6 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
             messagesRepository = get(),
             sessionRepository = get(),
             syncEngine = get(),
-            registerDevice = get(),
             login = get(),
             loadContacts = get(),
             sendTextMessageUseCase = get(),

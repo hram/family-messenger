@@ -42,3 +42,12 @@ actual fun createPlatformServices(): PlatformServices = PlatformServices(
 )
 
 actual fun randomUuid(): String = UUID.randomUUID().toString()
+
+actual fun platformLogInfo(tag: String, message: String) {
+    println("INFO [$tag] $message")
+}
+
+actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
+    println("ERROR [$tag] $message")
+    throwable?.printStackTrace()
+}

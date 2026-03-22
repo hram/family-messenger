@@ -4,6 +4,7 @@ import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import platform.Foundation.NSBundle
+import platform.Foundation.NSLog
 import platform.Foundation.NSString
 import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDefaults
@@ -46,3 +47,12 @@ actual fun createPlatformServices(): PlatformServices {
 }
 
 actual fun randomUuid(): String = NSUUID().UUIDString()
+
+actual fun platformLogInfo(tag: String, message: String) {
+    NSLog("INFO [%@] %@", tag, message)
+}
+
+actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
+    NSLog("ERROR [%@] %@", tag, message)
+    throwable?.message?.let { NSLog("ERROR [%@] cause=%@", tag, it) }
+}

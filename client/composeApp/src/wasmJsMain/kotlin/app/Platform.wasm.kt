@@ -61,3 +61,14 @@ actual fun randomUuid(): String {
         append(hex.substring(20, 32))
     }
 }
+
+actual fun platformLogInfo(tag: String, message: String) {
+    println("INFO [$tag] $message")
+}
+
+actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
+    println("ERROR [$tag] $message")
+    if (throwable != null) {
+        println(throwable.toString())
+    }
+}

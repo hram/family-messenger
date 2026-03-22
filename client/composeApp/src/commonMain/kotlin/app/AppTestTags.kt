@@ -3,8 +3,6 @@ package app
 object AppTestTags {
     const val OnboardingBaseUrl = "onboarding.baseUrl"
     const val OnboardingInviteCode = "onboarding.inviteCode"
-    const val OnboardingRegisterTab = "onboarding.auth.register"
-    const val OnboardingLoginTab = "onboarding.auth.login"
     const val OnboardingSubmit = "onboarding.submit"
 
     const val TopBarSettings = "topbar.settings"

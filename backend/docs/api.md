@@ -26,7 +26,6 @@
 
 ## Реализованные endpoint'ы
 
-- `POST /api/auth/register-device` -> `RegisterDeviceRequest` / `AuthPayload`
 - `POST /api/auth/login` -> `LoginRequest` / `AuthPayload`
 - `GET /api/profile/me` -> `ProfileResponse`
 - `GET /api/contacts` -> `ContactsResponse`
@@ -41,7 +40,7 @@
 
 ## Auth
 
-- auth-маршруты работают по invite code
+- auth-маршрут работает по invite code
 - защищённые endpoint'ы используют bearer token
 - в БД хранится только `token_hash`, а не сырой токен
 - токен валидируется по `auth_tokens`, `expires_at` и `revoked_at`

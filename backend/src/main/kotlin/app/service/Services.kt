@@ -21,7 +21,6 @@ import com.familymessenger.contract.MarkReadRequest
 import com.familymessenger.contract.MessageType
 import com.familymessenger.contract.PresencePingRequest
 import com.familymessenger.contract.ProfileResponse
-import com.familymessenger.contract.RegisterDeviceRequest
 import com.familymessenger.contract.SendMessageRequest
 import com.familymessenger.contract.SendMessageResponse
 import com.familymessenger.contract.ShareLocationRequest
@@ -42,26 +41,9 @@ class AuthService(
     private val tokenService: TokenService,
     private val rateLimitService: RateLimitService,
 ) {
-    suspend fun registerDevice(request: RegisterDeviceRequest, clientKey: String): AuthPayload {
-        validateInviteCode(request.inviteCode)
-        validatePushToken(request.pushToken)
-        rateLimitService.checkAuth(clientKey)
-
-        val issuedToken = tokenService.issueToken()
-        val now = Clock.System.now()
-        return repository.registerDevice(
-            inviteCode = request.inviteCode,
-            platform = request.platform.name,
-            pushToken = request.pushToken?.trim(),
-            tokenHash = issuedToken.hash,
-            rawToken = issuedToken.rawToken,
-            expiresAt = issuedToken.expiresAt,
-            now = now,
-        )
-    }
-
     suspend fun login(request: LoginRequest, clientKey: String): AuthPayload {
         validateInviteCode(request.inviteCode)
+        validatePushToken(request.pushToken)
         rateLimitService.checkAuth(clientKey)
 
         val issuedToken = tokenService.issueToken()
@@ -69,6 +51,7 @@ class AuthService(
         return repository.login(
             inviteCode = request.inviteCode,
             platform = request.platform.name,
+            pushToken = request.pushToken?.trim(),
             tokenHash = issuedToken.hash,
             rawToken = issuedToken.rawToken,
             expiresAt = issuedToken.expiresAt,

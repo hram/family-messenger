@@ -23,7 +23,6 @@ class AppViewModel(
     private val messagesRepository: MessagesRepository,
     private val sessionRepository: SessionRepository,
     private val syncEngine: SyncEngine,
-    private val registerDevice: RegisterDeviceUseCase,
     private val login: LoginUseCase,
     private val loadContacts: LoadContactsUseCase,
     private val sendTextMessageUseCase: SendTextMessageUseCase,
@@ -102,18 +101,13 @@ class AppViewModel(
 
     fun updateInviteCode(value: String) = mutate { copy(onboarding = onboarding.copy(inviteCode = value)) }
 
-    fun setAuthMode(mode: AuthMode) = mutate { copy(onboarding = onboarding.copy(authMode = mode)) }
-
     fun updateDraftMessage(value: String) = mutate { copy(draftMessage = value) }
 
     fun submitAuth() {
         runBusy {
             val onboarding = state.value.onboarding
             settingsRepository.updateServerBaseUrl(onboarding.baseUrl)
-            val session = when (onboarding.authMode) {
-                AuthMode.REGISTER -> registerDevice(onboarding.inviteCode)
-                AuthMode.LOGIN -> login(onboarding.inviteCode)
-            }
+            val session = login(onboarding.inviteCode)
             syncEngine.start(scope)
             val contacts = loadContacts()
             mutableState.value = mutableState.value.copy(

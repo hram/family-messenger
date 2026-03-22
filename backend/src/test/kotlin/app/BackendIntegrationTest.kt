@@ -31,8 +31,8 @@ import java.util.UUID
 
 class BackendIntegrationTest {
     @Test
-    fun registerDeviceReturnsSessionPayload() = backendTestApp {
-        val response = registerDevice(
+    fun loginReturnsSessionPayload() = backendTestApp {
+        val response = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
@@ -46,46 +46,47 @@ class BackendIntegrationTest {
     }
 
     @Test
-    fun registerDeviceRejectsInviteReuseWhenLimitReached() = backendTestApp {
-        val first = registerDevice(
+    fun loginReusesBoundInviteForSameUserAndPlatform() = backendTestApp {
+        val first = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
         assertEquals(HttpStatusCode.OK, first.status)
 
-        val second = registerDevice(
+        val second = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
 
-        assertEquals(HttpStatusCode.Conflict, second.status)
+        assertEquals(HttpStatusCode.OK, second.status)
         val body = second.json()
-        assertFalse(body.success())
-        assertEquals(ErrorCode.CONFLICT.name, body.errorCode())
+        assertTrue(body.success())
+        assertEquals("Parent", body.data().req("user").obj().req("displayName").text())
     }
 
     @Test
-    fun childInviteCodeIsAlsoSingleUserOnly() = backendTestApp {
-        val first = registerDevice(
+    fun boundInviteCanAuthenticateOnNewPlatformWithoutSeparateRegistration() = backendTestApp {
+        val first = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         )
         assertEquals(HttpStatusCode.OK, first.status)
 
-        val second = registerDevice(
+        val second = login(
             inviteCode = "CHILD-DEMO",
-            platform = "desktop",
+            platform = "android",
         )
 
-        assertEquals(HttpStatusCode.Conflict, second.status)
+        assertEquals(HttpStatusCode.OK, second.status)
         val body = second.json()
-        assertFalse(body.success())
-        assertEquals(ErrorCode.CONFLICT.name, body.errorCode())
+        assertTrue(body.success())
+        assertEquals("Child", body.data().req("user").obj().req("displayName").text())
+        assertEquals("child", body.data().req("user").obj().req("role").text())
     }
 
     @Test
     fun loginReturnsNewTokenForRegisteredDevice() = backendTestApp {
-        registerDevice(
+        login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
@@ -103,12 +104,31 @@ class BackendIntegrationTest {
     }
 
     @Test
-    fun loginResolvesUserFromInviteCodeWithoutCrossRoleLeak() = backendTestApp {
-        registerDevice(
+    fun loginCreatesDeviceForNewPlatformWhenInviteAlreadyBound() = backendTestApp {
+        login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
-        registerDevice(
+
+        val login = login(
+            inviteCode = "PARENT-DEMO",
+            platform = "android",
+        )
+
+        assertEquals(HttpStatusCode.OK, login.status)
+        val body = login.json()
+        assertTrue(body.success())
+        assertEquals("Parent", body.data().req("user").obj().req("displayName").text())
+        assertTrue(body.data().req("session").obj().req("token").text().isNotBlank())
+    }
+
+    @Test
+    fun loginResolvesUserFromInviteCodeWithoutCrossRoleLeak() = backendTestApp {
+        login(
+            inviteCode = "PARENT-DEMO",
+            platform = "desktop",
+        )
+        login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         )
@@ -127,7 +147,7 @@ class BackendIntegrationTest {
 
     @Test
     fun contactsAlwaysIncludeFamilyGroupChat() = backendTestApp {
-        val auth = registerDevice(
+        val auth = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
@@ -146,11 +166,11 @@ class BackendIntegrationTest {
 
     @Test
     fun familyGroupMessageIsVisibleToOtherFamilyMembers() = backendTestApp {
-        val parent = registerDevice(
+        val parent = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
-        val child = registerDevice(
+        val child = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         ).json()
@@ -200,11 +220,11 @@ class BackendIntegrationTest {
      */
     @Test
     fun authSwitchingKeepsUsersChatsAndMessagesSeparated() = backendTestApp {
-        registerDevice(
+        login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         )
-        registerDevice(
+        login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         )
@@ -306,11 +326,11 @@ class BackendIntegrationTest {
      */
     @Test
     fun familyGroupChatRemainsSharedWhenSwitchingBetweenThreeUsers() = backendTestApp {
-        val parentRegistration = registerDevice(
+        val parentRegistration = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
-        val childRegistration = registerDevice(
+        val childRegistration = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         ).json()
@@ -321,7 +341,7 @@ class BackendIntegrationTest {
             role = "CHILD",
         )
 
-        val siblingRegistration = registerDevice(
+        val siblingRegistration = login(
             inviteCode = "SIBLING-DEMO",
             platform = "desktop",
         ).json()
@@ -447,7 +467,7 @@ class BackendIntegrationTest {
 
     @Test
     fun profileReturnsCurrentUserForValidToken() = backendTestApp {
-        val auth = registerDevice(
+        val auth = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
@@ -464,11 +484,11 @@ class BackendIntegrationTest {
 
     @Test
     fun sendMessageAndSyncExposeMessageToRecipient() = backendTestApp {
-        val parent = registerDevice(
+        val parent = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
-        val child = registerDevice(
+        val child = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         ).json()
@@ -510,11 +530,11 @@ class BackendIntegrationTest {
 
     @Test
     fun sendMessageIsDeduplicatedByClientMessageUuid() = backendTestApp {
-        val parent = registerDevice(
+        val parent = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
         ).json()
-        val child = registerDevice(
+        val child = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
         ).json()
@@ -548,7 +568,7 @@ class BackendIntegrationTest {
         authRateLimitMaxRequests = 2,
         authRateLimitWindowSeconds = 60,
     ) {
-        registerDevice(
+        login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
             clientKey = "setup-client",
@@ -621,23 +641,6 @@ private fun backendTestApp(
     }
 
     block()
-}
-
-private suspend fun ApplicationTestBuilder.registerDevice(
-    inviteCode: String,
-    platform: String,
-    clientKey: String = "test-client",
-): HttpResponse = client.post("/api/auth/register-device") {
-    contentType(ContentType.Application.Json)
-    header("X-Forwarded-For", clientKey)
-    setBody(
-        """
-            {
-              "inviteCode": "$inviteCode",
-              "platform": "$platform"
-            }
-        """.trimIndent(),
-    )
 }
 
 private suspend fun ApplicationTestBuilder.login(

@@ -10,20 +10,10 @@ import com.familymessenger.contract.SyncPayload
 import kotlinx.datetime.Instant
 
 interface AuthRepository {
-
-    suspend fun registerDevice(
-        inviteCode: String,
-        platform: String,
-        pushToken: String?,
-        tokenHash: String,
-        rawToken: String,
-        expiresAt: Instant,
-        now: Instant,
-    ): AuthPayload
-
     suspend fun login(
         inviteCode: String,
         platform: String,
+        pushToken: String?,
         tokenHash: String,
         rawToken: String,
         expiresAt: Instant,

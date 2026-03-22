@@ -59,13 +59,13 @@ class DesktopAuthSwitchE2eTest {
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun desktopHappyPathSwitchesUsersAndKeepsChatsSeparated() {
-        registerThroughUi("PARENT-DEMO")
+        signInThroughUi("PARENT-DEMO")
         rule.waitForContact(0)
         rule.onNodeWithText("Demo Family").assertExists()
 
         logoutThroughUi()
 
-        registerThroughUi("CHILD-DEMO")
+        signInThroughUi("CHILD-DEMO")
         rule.waitForContact(0)
         rule.waitForText("Parent")
 
@@ -77,7 +77,7 @@ class DesktopAuthSwitchE2eTest {
 
         logoutThroughUi()
 
-        loginThroughUi("PARENT-DEMO")
+        signInThroughUi("PARENT-DEMO")
         rule.waitForContact(0)
         rule.waitForText("Child")
 
@@ -90,15 +90,7 @@ class DesktopAuthSwitchE2eTest {
         rule.onNodeWithText("family hello from child").assertDoesNotExist()
     }
 
-    private fun registerThroughUi(inviteCode: String) {
-        rule.onNodeWithTag(AppTestTags.OnboardingRegisterTab).performClick()
-        rule.onNodeWithTag(AppTestTags.OnboardingBaseUrl).performTextReplacement(backend.baseUrl)
-        rule.onNodeWithTag(AppTestTags.OnboardingInviteCode).performTextReplacement(inviteCode)
-        rule.onNodeWithTag(AppTestTags.OnboardingSubmit).performClick()
-    }
-
-    private fun loginThroughUi(inviteCode: String) {
-        rule.onNodeWithTag(AppTestTags.OnboardingLoginTab).performClick()
+    private fun signInThroughUi(inviteCode: String) {
         rule.onNodeWithTag(AppTestTags.OnboardingBaseUrl).performTextReplacement(backend.baseUrl)
         rule.onNodeWithTag(AppTestTags.OnboardingInviteCode).performTextReplacement(inviteCode)
         rule.onNodeWithTag(AppTestTags.OnboardingSubmit).performClick()

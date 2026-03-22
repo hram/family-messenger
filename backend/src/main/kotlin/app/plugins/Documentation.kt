@@ -27,7 +27,7 @@ fun Application.configureDocumentation(appConfig: AppConfig) {
                 type = AuthType.HTTP
                 scheme = AuthScheme.BEARER
                 bearerFormat = "Bearer"
-                description = "Bearer token issued by /api/auth/register-device or /api/auth/login"
+                description = "Bearer token issued by /api/auth/login"
             }
             defaultSecuritySchemeNames("bearerAuth")
         }

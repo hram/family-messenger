@@ -3,7 +3,6 @@ package app.routes
 import app.service.AuthService
 import app.support.respondOk
 import com.familymessenger.contract.LoginRequest
-import com.familymessenger.contract.RegisterDeviceRequest
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ApiResponse
 import io.ktor.server.request.receive
@@ -12,30 +11,11 @@ import io.github.smiley4.ktoropenapi.post
 import io.ktor.server.routing.Route
 
 fun Route.authRoutes(authService: AuthService) {
-    post("/auth/register-device", {
-        description = "Register a device using an invite code and issue a bearer session token."
-        request {
-            body<RegisterDeviceRequest> {
-                description = "Invite code and platform."
-            }
-        }
-        response {
-            HttpStatusCode.OK to {
-                body<ApiResponse<AuthPayload>> {
-                    description = "Authenticated session payload."
-                }
-            }
-        }
-    }) {
-        val request = call.receive<RegisterDeviceRequest>()
-        call.respondOk(authService.registerDevice(request, clientKey = call.clientKey()))
-    }
-
     post("/auth/login", {
-        description = "Log in an already registered device using the invite code and platform."
+        description = "Authenticate by invite code, creating the user or device binding on first use and issuing a bearer session token."
         request {
             body<LoginRequest> {
-                description = "Invite code and platform."
+                description = "Invite code, platform and optional push token."
             }
         }
         response {
