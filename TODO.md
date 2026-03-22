@@ -23,10 +23,13 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 Без идеализма. Просто поднять и убедиться, что:
 
 - домен смотрит куда надо
-- compose стартует
 - backend доступен извне
 - Postgres жив
 - клиент может подключиться
+- не собирать backend на VPS из исходников
+- не заставлять сервер тянуть Gradle и base images во время deploy
+- выкатывать только готовый `family-messenger-backend-all.jar` из GitHub Releases
+- backend запускать через `systemd`
 
 ## Шаг C. Довести реальные платформенные фичи
 
@@ -39,5 +42,6 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 
 - token cleanup
 - invite admin flow
-- prebuilt image from CI
+- автоматизировать выпуск `fat jar` в GitHub Releases
+- убрать source-build из server deploy path полностью
 - CORS tightening

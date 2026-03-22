@@ -38,3 +38,14 @@ See [backend README](backend/README.md), [backend API notes](backend/docs/api.md
 
 The practical next steps after the current implementation pass are tracked in [TODO.md](TODO.md).
 Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
+
+## Deployment Rule
+
+Для VPS deploy зафиксировано жёсткое правило:
+
+- backend нельзя собирать на сервере из исходников
+- сервер не должен тянуть Gradle distribution и build-time зависимости во время deploy
+- деплой должен использовать только готовый backend дистрибутив
+- целевой артефакт для VPS: `family-messenger-backend-all.jar`, опубликованный в GitHub Releases
+
+Это ограничение появилось из практического опыта: source-build на VPS делает deploy медленным и хрупким и завязывает запуск на внешние registry и их rate limits.
