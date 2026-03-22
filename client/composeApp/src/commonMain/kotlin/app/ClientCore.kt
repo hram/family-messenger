@@ -1,6 +1,10 @@
 package app
 
 import com.familymessenger.contract.AckResponse
+import com.familymessenger.contract.AdminCreateMemberRequest
+import com.familymessenger.contract.AdminCreateMemberResponse
+import com.familymessenger.contract.AdminMembersResponse
+import com.familymessenger.contract.AdminRemoveMemberRequest
 import com.familymessenger.contract.ApiError
 import com.familymessenger.contract.ApiResponse
 import com.familymessenger.contract.AuthPayload
@@ -23,9 +27,15 @@ import com.familymessenger.contract.QuickActionCode
 import com.familymessenger.contract.SendMessageRequest
 import com.familymessenger.contract.SendMessageResponse
 import com.familymessenger.contract.ShareLocationRequest
+import com.familymessenger.contract.SetupBootstrapRequest
+import com.familymessenger.contract.SetupBootstrapResponse
+import com.familymessenger.contract.SetupMemberDraft
+import com.familymessenger.contract.SetupStatusResponse
 import com.familymessenger.contract.SyncPayload
 import com.familymessenger.contract.SystemEventPayload
 import com.familymessenger.contract.UpdatePushTokenRequest
+import com.familymessenger.contract.UserRole
+import com.familymessenger.contract.VerifyAdminAccessRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -285,6 +295,63 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    suspend fun setupStatus(): SetupStatusResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "GET /api/setup/status")
+            httpClient.get(url("/api/setup/status")).body()
+        }
+
+    suspend fun bootstrap(request: SetupBootstrapRequest): SetupBootstrapResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/setup/bootstrap members=${request.members.size}")
+            httpClient.post(url("/api/setup/bootstrap")) {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
+        }
+
+    suspend fun verifyAdminAccess(masterPassword: String): AdminMembersResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/admin/verify")
+            httpClient.post(url("/api/admin/verify")) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(VerifyAdminAccessRequest(masterPassword))
+            }.body()
+        }
+
+    suspend fun createMember(
+        masterPassword: String,
+        displayName: String,
+        role: UserRole,
+        isAdmin: Boolean,
+    ): AdminCreateMemberResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/admin/members/create role=${role.name}")
+            httpClient.post(url("/api/admin/members/create")) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(
+                    AdminCreateMemberRequest(
+                        masterPassword = masterPassword,
+                        displayName = displayName,
+                        role = role,
+                        isAdmin = isAdmin,
+                    ),
+                )
+            }.body()
+        }
+
+    suspend fun removeMember(masterPassword: String, inviteCode: String): AdminMembersResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/admin/members/remove invite=$inviteCode")
+            httpClient.post(url("/api/admin/members/remove")) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(AdminRemoveMemberRequest(masterPassword = masterPassword, inviteCode = inviteCode))
+            }.body()
+        }
+
     suspend fun profile(): ProfileResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "GET /api/profile/me")
@@ -433,6 +500,43 @@ class SessionRepository(
         sessionStore.save(session)
         return session
     }
+}
+
+class SetupRepository(
+    private val apiClient: FamilyMessengerApiClient,
+) {
+    suspend fun status(): SetupStatusResponse = apiClient.setupStatus()
+
+    suspend fun bootstrap(
+        masterPassword: String,
+        familyName: String,
+        members: List<SetupMemberInputState>,
+    ): SetupBootstrapResponse = apiClient.bootstrap(
+        SetupBootstrapRequest(
+            masterPassword = masterPassword,
+            familyName = familyName,
+            members = members.map {
+                SetupMemberDraft(
+                    displayName = it.displayName.trim(),
+                    role = it.role,
+                    isAdmin = it.isAdmin,
+                )
+            },
+        ),
+    )
+}
+
+class AdminRepository(
+    private val apiClient: FamilyMessengerApiClient,
+) {
+    suspend fun verifyAccess(masterPassword: String): AdminMembersResponse =
+        apiClient.verifyAdminAccess(masterPassword)
+
+    suspend fun createMember(masterPassword: String, displayName: String, role: UserRole, isAdmin: Boolean): AdminCreateMemberResponse =
+        apiClient.createMember(masterPassword, displayName, role, isAdmin)
+
+    suspend fun removeMember(masterPassword: String, inviteCode: String): AdminMembersResponse =
+        apiClient.removeMember(masterPassword, inviteCode)
 }
 
 class ContactsRepository(
@@ -636,6 +740,43 @@ class LoginUseCase(
         syncEngine.kick()
         return session
     }
+}
+
+class LoadSetupStatusUseCase(
+    private val setupRepository: SetupRepository,
+) {
+    suspend operator fun invoke(): SetupStatusResponse = setupRepository.status()
+}
+
+class BootstrapSystemUseCase(
+    private val setupRepository: SetupRepository,
+) {
+    suspend operator fun invoke(
+        masterPassword: String,
+        familyName: String,
+        members: List<SetupMemberInputState>,
+    ): SetupBootstrapResponse = setupRepository.bootstrap(masterPassword, familyName, members)
+}
+
+class VerifyAdminAccessUseCase(
+    private val adminRepository: AdminRepository,
+) {
+    suspend operator fun invoke(masterPassword: String): AdminMembersResponse =
+        adminRepository.verifyAccess(masterPassword)
+}
+
+class CreateMemberUseCase(
+    private val adminRepository: AdminRepository,
+) {
+    suspend operator fun invoke(masterPassword: String, displayName: String, role: UserRole, isAdmin: Boolean): AdminCreateMemberResponse =
+        adminRepository.createMember(masterPassword, displayName, role, isAdmin)
+}
+
+class RemoveMemberUseCase(
+    private val adminRepository: AdminRepository,
+) {
+    suspend operator fun invoke(masterPassword: String, inviteCode: String): AdminMembersResponse =
+        adminRepository.removeMember(masterPassword, inviteCode)
 }
 
 class LoadContactsUseCase(
@@ -863,12 +1004,19 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { ApiExecutor(get()) }
     single { FamilyMessengerApiClient(get(), get(), get(), get()) }
     single { SessionRepository(get(), get(), get(), get()) }
+    single { SetupRepository(get()) }
+    single { AdminRepository(get()) }
     single { ContactsRepository(get(), get()) }
     single { MessagesRepository(get(), get(), get()) }
     single { PresenceRepository(get(), get()) }
     single { DeviceRepository(get()) }
     single { SyncEngine(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { LoginUseCase(get(), get()) }
+    single { LoadSetupStatusUseCase(get()) }
+    single { BootstrapSystemUseCase(get()) }
+    single { VerifyAdminAccessUseCase(get()) }
+    single { CreateMemberUseCase(get()) }
+    single { RemoveMemberUseCase(get()) }
     single { LoadContactsUseCase(get()) }
     single { SendTextMessageUseCase(get()) }
     single { SendQuickActionUseCase(get()) }
@@ -883,6 +1031,11 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
             sessionRepository = get(),
             syncEngine = get(),
             login = get(),
+            loadSetupStatus = get(),
+            bootstrapSystem = get(),
+            verifyAdminAccess = get(),
+            createMember = get(),
+            removeMember = get(),
             loadContacts = get(),
             sendTextMessageUseCase = get(),
             sendQuickActionUseCase = get(),

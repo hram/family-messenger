@@ -1,11 +1,16 @@
 package app.repository
 
 import app.model.SessionPrincipal
+import com.familymessenger.contract.AdminCreateMemberResponse
+import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.ProfileResponse
+import com.familymessenger.contract.SetupBootstrapResponse
+import com.familymessenger.contract.SetupMemberDraft
+import com.familymessenger.contract.SetupStatusResponse
 import com.familymessenger.contract.SyncPayload
 import kotlinx.datetime.Instant
 
@@ -52,4 +57,27 @@ interface PresenceRepository {
 
 interface DeviceRepository {
     suspend fun updatePushToken(principal: SessionPrincipal, pushToken: String?, now: Instant)
+}
+
+interface SetupRepository {
+    suspend fun status(): SetupStatusResponse
+    suspend fun bootstrap(
+        masterPasswordHash: String,
+        familyName: String,
+        members: List<SetupMemberDraft>,
+        now: Instant,
+    ): SetupBootstrapResponse
+}
+
+interface AdminRepository {
+    suspend fun masterPasswordHash(familyId: Long): String?
+    suspend fun listMembers(principal: SessionPrincipal): AdminMembersResponse
+    suspend fun createMember(
+        principal: SessionPrincipal,
+        displayName: String,
+        role: String,
+        isAdmin: Boolean,
+        now: Instant,
+    ): AdminCreateMemberResponse
+    suspend fun removeMember(principal: SessionPrincipal, inviteCode: String, now: Instant): AdminMembersResponse
 }

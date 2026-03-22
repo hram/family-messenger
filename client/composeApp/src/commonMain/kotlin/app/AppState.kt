@@ -1,16 +1,21 @@
 package app
 
+import com.familymessenger.contract.AdminMemberSummary
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
+import com.familymessenger.contract.SetupInviteSummary
+import com.familymessenger.contract.UserRole
 import com.familymessenger.contract.UserProfile
 
 enum class Screen {
     ONBOARDING,
+    SETUP,
     CONTACTS,
     CHAT,
     SETTINGS,
+    ADMIN,
 }
 
 data class OnboardingFormState(
@@ -23,6 +28,34 @@ data class SettingsState(
     val pushEnabled: Boolean = false,
 )
 
+data class SetupMemberInputState(
+    val displayName: String = "",
+    val role: UserRole = UserRole.CHILD,
+    val isAdmin: Boolean = false,
+)
+
+data class SetupFormState(
+    val step: Int = 1,
+    val isInitialized: Boolean? = null,
+    val masterPassword: String = "",
+    val masterPasswordConfirm: String = "",
+    val familyName: String = "",
+    val members: List<SetupMemberInputState> = listOf(
+        SetupMemberInputState(role = UserRole.PARENT, isAdmin = true),
+        SetupMemberInputState(role = UserRole.CHILD),
+    ),
+    val generatedInvites: List<SetupInviteSummary> = emptyList(),
+)
+
+data class AdminState(
+    val unlocked: Boolean = false,
+    val masterPassword: String = "",
+    val members: List<AdminMemberSummary> = emptyList(),
+    val newMemberName: String = "",
+    val newMemberRole: UserRole = UserRole.CHILD,
+    val newMemberIsAdmin: Boolean = false,
+)
+
 data class AppUiState(
     val screen: Screen = Screen.ONBOARDING,
     val platform: PlatformType = PlatformType.ANDROID,
@@ -31,6 +64,8 @@ data class AppUiState(
     val errorMessage: String? = null,
     val statusMessage: String? = null,
     val onboarding: OnboardingFormState = OnboardingFormState(),
+    val setup: SetupFormState = SetupFormState(),
+    val admin: AdminState = AdminState(),
     val settings: SettingsState = SettingsState(),
     val currentUser: UserProfile? = null,
     val contacts: List<ContactSummary> = emptyList(),

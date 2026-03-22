@@ -125,6 +125,7 @@ data class UserProfile(
     val familyId: Long,
     val displayName: String,
     val role: UserRole,
+    val isAdmin: Boolean = false,
     val lastSeenAt: Instant? = null,
 )
 
@@ -191,4 +192,52 @@ data class SyncPayload(
     val messages: List<MessagePayload>,
     val receipts: List<MessageReceiptPayload>,
     val events: List<SystemEventPayload>,
+)
+
+@Serializable
+data class SetupStatusResponse(
+    val initialized: Boolean,
+    val familyName: String? = null,
+)
+
+@Serializable
+data class SetupMemberDraft(
+    val displayName: String,
+    val role: UserRole,
+    val isAdmin: Boolean = false,
+)
+
+@Serializable
+data class SetupInviteSummary(
+    val displayName: String,
+    val role: UserRole,
+    val isAdmin: Boolean = false,
+    val inviteCode: String,
+)
+
+@Serializable
+data class SetupBootstrapResponse(
+    val family: FamilySummary,
+    val invites: List<SetupInviteSummary>,
+)
+
+@Serializable
+data class AdminMemberSummary(
+    val inviteCode: String,
+    val userId: Long? = null,
+    val displayName: String,
+    val role: UserRole,
+    val isAdmin: Boolean = false,
+    val isRegistered: Boolean,
+    val isActive: Boolean,
+)
+
+@Serializable
+data class AdminMembersResponse(
+    val members: List<AdminMemberSummary>,
+)
+
+@Serializable
+data class AdminCreateMemberResponse(
+    val member: AdminMemberSummary,
 )

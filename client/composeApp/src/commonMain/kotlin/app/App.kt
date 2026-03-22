@@ -31,6 +31,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -47,14 +48,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.familymessenger.contract.ContactSummary
@@ -103,12 +110,14 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
 
                 when {
                     state.screen == Screen.ONBOARDING -> OnboardingScreen(state, viewModel)
+                    state.screen == Screen.SETUP -> SetupScreen(state, viewModel)
                     isWide -> WideLayout(state, viewModel)
                     else -> when (state.screen) {
                         Screen.CONTACTS  -> ContactsScreen(state, viewModel)
                         Screen.CHAT      -> ChatScreen(state, viewModel)
                         Screen.SETTINGS  -> SettingsScreen(state, viewModel)
-                        Screen.ONBOARDING -> {}
+                        Screen.ADMIN     -> AdminScreen(state, viewModel)
+                        Screen.ONBOARDING, Screen.SETUP -> {}
                     }
                 }
 
@@ -182,13 +191,13 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                         onClick = viewModel::openSettings,
                         modifier = Modifier.testTag(AppTestTags.TopBarSettings),
                     ) {
-                        Text("⚙", color = Color.White, fontSize = 18.sp)
+                        Icon(AppIcons.Settings, contentDescription = "Settings", tint = Color.White)
                     }
                     IconButton(
                         onClick = viewModel::refreshContacts,
                         modifier = Modifier.testTag(AppTestTags.TopBarRefresh),
                     ) {
-                        Text("↻", color = Color.White, fontSize = 20.sp)
+                        Icon(AppIcons.Refresh, contentDescription = "Refresh", tint = Color.White)
                     }
                 },
             )
@@ -225,14 +234,14 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("💬", fontSize = 48.sp)
+                        Icon(AppIcons.Chat, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                         Text("Select a contact", color = TextSecondary, fontSize = 15.sp)
                     }
                 }
             }
 
             // Settings overlay: dimmed backdrop + panel from the right edge
-            if (state.screen == Screen.SETTINGS) {
+            if (state.screen == Screen.SETTINGS || state.screen == Screen.ADMIN) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -246,7 +255,11 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                         .fillMaxHeight(),
                     color = AppBg,
                 ) {
-                    SettingsPanel(state, viewModel)
+                    if (state.screen == Screen.ADMIN) {
+                        AdminPanel(state, viewModel)
+                    } else {
+                        SettingsPanel(state, viewModel)
+                    }
                 }
             }
         }
@@ -325,6 +338,254 @@ private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
     }
 }
 
+@Composable
+private fun SetupScreen(state: AppUiState, viewModel: AppViewModel) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(TgBlueDark)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+        ) {
+            Text(
+                "First Launch Setup",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            TgTextField(
+                value = state.onboarding.baseUrl,
+                onValueChange = viewModel::updateBaseUrl,
+                label = "Server Base URL",
+                modifier = Modifier.testTag(AppTestTags.SetupBaseUrl),
+            )
+
+            when (state.setup.step) {
+                1 -> SetupPasswordStep(state, viewModel)
+                2 -> SetupMembersStep(state, viewModel)
+                else -> SetupSummaryStep(state, viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetupPasswordStep(state: AppUiState, viewModel: AppViewModel) {
+    Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Step 1 of 2", fontSize = 13.sp, color = TextSecondary)
+            Text("Create master password", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            PasswordSetupField(
+                value = state.setup.masterPassword,
+                onValueChange = viewModel::updateSetupMasterPassword,
+                label = "Master Password",
+                modifier = Modifier.testTag(AppTestTags.SetupMasterPassword),
+            )
+            PasswordSetupField(
+                value = state.setup.masterPasswordConfirm,
+                onValueChange = viewModel::updateSetupMasterPasswordConfirm,
+                label = "Confirm Password",
+                modifier = Modifier.testTag(AppTestTags.SetupMasterPasswordConfirm),
+            )
+            Button(
+                onClick = viewModel::proceedFromSetupPasswordStep,
+                modifier = Modifier.fillMaxWidth().height(48.dp).testTag(AppTestTags.SetupNext),
+                colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text("Next")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PasswordSetupField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text(label) },
+        visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (value.isNotEmpty()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(AppIcons.Clear, contentDescription = "Clear", tint = TextSecondary)
+                    }
+                }
+                IconButton(onClick = { isVisible = !isVisible }) {
+                    Icon(
+                        imageVector = if (isVisible) AppIcons.EyeOff else AppIcons.Eye,
+                        contentDescription = if (isVisible) "Hide password" else "Show password",
+                        tint = TextSecondary,
+                    )
+                }
+            }
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = Color(0xFFE0E0E0),
+            focusedBorderColor = TgBlue,
+        ),
+        shape = RoundedCornerShape(12.dp),
+    )
+}
+
+@Composable
+private fun SetupMembersStep(state: AppUiState, viewModel: AppViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Step 2 of 2", fontSize = 13.sp, color = TextSecondary)
+                Text("Family and invite codes", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                TgTextField(
+                    value = state.setup.familyName,
+                    onValueChange = viewModel::updateSetupFamilyName,
+                    label = "Family Name",
+                    modifier = Modifier.testTag(AppTestTags.SetupFamilyName),
+                )
+            }
+        }
+
+        state.setup.members.forEachIndexed { index, member ->
+            Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Member ${index + 1}", fontWeight = FontWeight.Medium)
+                        if (state.setup.members.size > 1) {
+                            TextButton(
+                                onClick = { viewModel.removeSetupMember(index) },
+                                modifier = Modifier.testTag(AppTestTags.SetupMemberRemovePrefix + index),
+                            ) {
+                                Text("Remove", color = TgBlueDark)
+                            }
+                        }
+                    }
+                    TgTextField(
+                        value = member.displayName,
+                        onValueChange = { viewModel.updateSetupMemberName(index, it) },
+                        label = "Display Name",
+                        modifier = Modifier.testTag(AppTestTags.SetupMemberNamePrefix + index),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(UserRole.PARENT to "Parent", UserRole.CHILD to "Child").forEach { (role, label) ->
+                            val selected = member.role == role
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) TgBlue else TgBlueTint)
+                                    .clickable { viewModel.updateSetupMemberRole(index, role) }
+                                    .padding(vertical = 12.dp)
+                                    .testTag(AppTestTags.SetupMemberRolePrefix + index + "." + role.name.lowercase()),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(label, color = if (selected) Color.White else TgBlueDark, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                    if (member.role == UserRole.PARENT) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Administrator", fontWeight = FontWeight.Medium, color = TextPrimary)
+                                Text("Can open admin section and manage children", fontSize = 12.sp, color = TextSecondary)
+                            }
+                            Switch(
+                                checked = member.isAdmin,
+                                onCheckedChange = { viewModel.updateSetupMemberAdmin(index, it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = TgBlue,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TextButton(onClick = viewModel::addSetupMember, modifier = Modifier.testTag(AppTestTags.SetupAddMember)) {
+                Text("Add Member", color = TgBlueDark)
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { viewModel.goToSetupStep(1) },
+                modifier = Modifier.weight(1f).height(48.dp).testTag(AppTestTags.SetupBack),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB7BEC8)),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text("Back")
+            }
+            Button(
+                onClick = viewModel::submitSetup,
+                modifier = Modifier.weight(1f).height(48.dp).testTag(AppTestTags.SetupSubmit),
+                colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text("Initialize")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetupSummaryStep(state: AppUiState, viewModel: AppViewModel) {
+    Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Setup complete", fontSize = 20.sp, fontWeight = FontWeight.Medium)
+            Text("Share these invite codes with family members.", color = TextSecondary)
+            state.setup.generatedInvites.forEach { invite ->
+                Surface(color = TgBlueTint, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(invite.displayName, fontWeight = FontWeight.Medium)
+                        Text(
+                            buildString {
+                                append(invite.role.name.lowercase())
+                                if (invite.isAdmin) append(" · administrator")
+                            },
+                            color = TextSecondary,
+                            fontSize = 13.sp,
+                        )
+                        Text(invite.inviteCode, color = TgBlueDark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Button(
+                onClick = viewModel::finishSetup,
+                modifier = Modifier.fillMaxWidth().height(48.dp).testTag(AppTestTags.SetupFinish),
+                colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text("Go To Login")
+            }
+        }
+    }
+}
+
 // ── Contacts screen (mobile wrapper) ─────────────────────────────────────────
 @Composable
 private fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
@@ -337,13 +598,13 @@ private fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
                     onClick = viewModel::openSettings,
                     modifier = Modifier.testTag(AppTestTags.TopBarSettings),
                 ) {
-                    Text("⚙", color = Color.White, fontSize = 18.sp)
+                    Icon(AppIcons.Settings, contentDescription = "Settings", tint = Color.White)
                 }
                 IconButton(
                     onClick = viewModel::refreshContacts,
                     modifier = Modifier.testTag(AppTestTags.TopBarRefresh),
                 ) {
-                    Text("↻", color = Color.White, fontSize = 20.sp)
+                    Icon(AppIcons.Refresh, contentDescription = "Refresh", tint = Color.White)
                 }
             },
         )
@@ -370,7 +631,7 @@ private fun ContactsPanel(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("💬", fontSize = 48.sp)
+                Icon(AppIcons.Chat, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                 Text(
                     "No contacts yet",
                     fontSize = 17.sp,
@@ -457,7 +718,7 @@ private fun ChatScreen(state: AppUiState, viewModel: AppViewModel) {
             leadingContent = {
                 // Back button shown only in mobile navigation
                 IconButton(onClick = viewModel::backToContacts) {
-                    Text("‹", color = Color.White, fontSize = 26.sp, lineHeight = 26.sp)
+                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
                 }
             },
         )
@@ -485,7 +746,7 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
             state.availableQuickActions().forEach { code ->
                 TgChip(label = code.name, onClick = { viewModel.sendQuickAction(code) })
             }
-            TgChip(label = "📍 Location", onClick = viewModel::shareLocation)
+            TgChip(label = "Location", icon = AppIcons.Location, onClick = viewModel::shareLocation)
         }
 
         // Messages area
@@ -507,9 +768,20 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     items(state.messages) { message ->
+                        val isFamilyChat = state.selectedContactId == FAMILY_GROUP_CHAT_ID
+                        val senderName = if (isFamilyChat) {
+                            when (message.senderUserId) {
+                                state.currentUser?.id -> state.currentUser?.displayName
+                                else -> state.contacts.find { it.user.id == message.senderUserId }?.user?.displayName
+                            }
+                        } else {
+                            null
+                        }
                         MessageBubble(
                             message = message,
                             mine = state.currentUser?.id == message.senderUserId,
+                            senderName = senderName,
+                            showSenderName = isFamilyChat,
                         )
                     }
                 }
@@ -529,7 +801,7 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 IconButton(onClick = {}) {
-                    Text("📎", fontSize = 20.sp)
+                    Icon(AppIcons.Attach, contentDescription = "Attach", tint = TextSecondary)
                 }
                 OutlinedTextField(
                     value = state.draftMessage,
@@ -555,7 +827,7 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                         .clickable(onClick = viewModel::sendCurrentDraft),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("➤", color = Color.White, fontSize = 16.sp)
+                    Icon(AppIcons.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -563,7 +835,12 @@ private fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
 }
 
 @Composable
-private fun MessageBubble(message: MessagePayload, mine: Boolean) {
+private fun MessageBubble(
+    message: MessagePayload,
+    mine: Boolean,
+    senderName: String? = null,
+    showSenderName: Boolean = false,
+) {
     val alignment = if (mine) Alignment.End else Alignment.Start
     val bubbleBg  = if (mine) BubbleMe else BubbleThem
     val tailShape = if (mine) {
@@ -583,6 +860,15 @@ private fun MessageBubble(message: MessagePayload, mine: Boolean) {
             modifier = Modifier.widthIn(min = 80.dp, max = 280.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+                if (showSenderName && !mine && !senderName.isNullOrBlank()) {
+                    Text(
+                        senderName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = senderNameColor(senderName),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
                 when (message.type) {
                     MessageType.TEXT -> Text(
                         message.body.orEmpty(),
@@ -601,7 +887,7 @@ private fun MessageBubble(message: MessagePayload, mine: Boolean) {
                                 .background(TgBlue),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("⚡", fontSize = 12.sp)
+                            Icon(AppIcons.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
                         }
                         Text(
                             message.quickActionCode?.name ?: "",
@@ -618,7 +904,7 @@ private fun MessageBubble(message: MessagePayload, mine: Boolean) {
                                 .background(TgBlueTint),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("📍", fontSize = 28.sp)
+                            Icon(AppIcons.Location, contentDescription = null, tint = TgBlueDark, modifier = Modifier.size(28.dp))
                         }
                         Text(
                             message.location?.label ?: "My location",
@@ -636,10 +922,11 @@ private fun MessageBubble(message: MessagePayload, mine: Boolean) {
                 ) {
                     Text(message.status.prettyLabel(), fontSize = 11.sp, color = TextSecondary)
                     if (mine) {
-                        Text(
-                            if (message.status == MessageStatus.READ) "✓✓" else "✓",
-                            fontSize = 11.sp,
-                            color = if (message.status == MessageStatus.READ) TgBlue else TextSecondary,
+                        Icon(
+                            imageVector = if (message.status == MessageStatus.READ) AppIcons.DoubleCheck else AppIcons.Check,
+                            contentDescription = null,
+                            tint = if (message.status == MessageStatus.READ) TgBlue else TextSecondary,
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
@@ -656,7 +943,7 @@ private fun SettingsScreen(state: AppUiState, viewModel: AppViewModel) {
             title = "Settings",
             leadingContent = {
                 IconButton(onClick = viewModel::backToContacts) {
-                    Text("‹", color = Color.White, fontSize = 26.sp, lineHeight = 26.sp)
+                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
                 }
             },
         )
@@ -713,11 +1000,31 @@ private fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
         SettingsSection {
             TgInfoRow("User",     state.currentUser?.displayName ?: "—")
             HorizontalDivider(color = Divider, thickness = 0.5.dp)
+            TgInfoRow("Role",     buildString {
+                append(state.currentUser?.role?.name?.lowercase() ?: "—")
+                if (state.currentUser?.isAdmin == true) append(" · admin")
+            })
+            HorizontalDivider(color = Divider, thickness = 0.5.dp)
             TgInfoRow("Platform", state.platformName)
             HorizontalDivider(color = Divider, thickness = 0.5.dp)
             TgInfoRow("Pending",  state.pendingMessageCount.toString())
             HorizontalDivider(color = Divider, thickness = 0.5.dp)
             TgInfoRow("Cursor",   state.syncCursor.toString())
+        }
+
+        if (state.currentUser?.isAdmin == true) {
+            SettingsSection {
+                Button(
+                    onClick = viewModel::openAdmin,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(AppTestTags.SettingsOpenAdmin),
+                    colors = ButtonDefaults.buttonColors(containerColor = TgBlueDark),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text("Open Administration", fontWeight = FontWeight.Medium)
+                }
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -733,6 +1040,160 @@ private fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
             shape = RoundedCornerShape(12.dp),
         ) {
             Text("Log out", fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun AdminScreen(state: AppUiState, viewModel: AppViewModel) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TgTopBar(
+            title = "Administration",
+            subtitle = state.currentUser?.displayName ?: "",
+            leadingContent = {
+                IconButton(onClick = viewModel::openSettings) {
+                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
+                }
+            },
+        )
+        AdminPanel(state, viewModel)
+    }
+}
+
+@Composable
+private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppBg)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        if (!state.admin.unlocked) {
+            Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Master password required", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                    Text("Administration is locked until the master password is confirmed.", color = TextSecondary)
+                    PasswordSetupField(
+                        value = state.admin.masterPassword,
+                        onValueChange = viewModel::updateAdminMasterPassword,
+                        label = "Master Password",
+                        modifier = Modifier.testTag(AppTestTags.AdminPassword),
+                    )
+                    Button(
+                        onClick = viewModel::unlockAdmin,
+                        modifier = Modifier.fillMaxWidth().height(48.dp).testTag(AppTestTags.AdminUnlock),
+                        colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text("Unlock")
+                    }
+                }
+            }
+            return
+        }
+
+        Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Family Members", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (state.admin.members.isEmpty()) {
+                    Text("No family members yet", color = TextSecondary)
+                } else {
+                    state.admin.members.forEach { member ->
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(member.displayName, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        buildString {
+                                            append(member.role.name.lowercase())
+                                            if (member.isAdmin) append(" · administrator")
+                                            append(" · ")
+                                            append(if (member.isRegistered) "registered" else "invite pending")
+                                            append(" · ")
+                                            append(if (member.isActive) "active" else "removed")
+                                            append(" · ")
+                                            append(member.inviteCode)
+                                        },
+                                        color = TextSecondary,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { viewModel.removeAdminMember(member.inviteCode) },
+                                    modifier = Modifier.testTag(AppTestTags.AdminMemberRemovePrefix + member.inviteCode),
+                                ) {
+                                    Text("Remove", color = Color(0xFFFF3B30))
+                                }
+                            }
+                            HorizontalDivider(color = Divider, thickness = 0.5.dp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Surface(color = Color.White, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Add family member", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                TgTextField(
+                    value = state.admin.newMemberName,
+                    onValueChange = viewModel::updateAdminNewMemberName,
+                    label = "Display Name",
+                    modifier = Modifier.testTag(AppTestTags.AdminMemberName),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(UserRole.PARENT to "Parent", UserRole.CHILD to "Child").forEach { (role, label) ->
+                        val selected = state.admin.newMemberRole == role
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) TgBlue else TgBlueTint)
+                                .clickable { viewModel.updateAdminNewMemberRole(role) }
+                                .padding(vertical = 12.dp)
+                                .testTag(AppTestTags.AdminMemberRolePrefix + role.name.lowercase()),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(label, color = if (selected) Color.White else TgBlueDark, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+                if (state.admin.newMemberRole == UserRole.PARENT) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("Administrator", fontWeight = FontWeight.Medium, color = TextPrimary)
+                            Text("Can open admin section and manage family members", fontSize = 12.sp, color = TextSecondary)
+                        }
+                        Switch(
+                            checked = state.admin.newMemberIsAdmin,
+                            onCheckedChange = viewModel::updateAdminNewMemberIsAdmin,
+                            modifier = Modifier.testTag(AppTestTags.AdminMemberAdmin),
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = TgBlue,
+                            ),
+                        )
+                    }
+                }
+                Button(
+                    onClick = viewModel::createAdminMember,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag(AppTestTags.AdminMemberCreate),
+                    colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text("Create Invite")
+                }
+            }
         }
     }
 }
@@ -795,19 +1256,27 @@ private fun AvatarCircle(name: String, size: Int) {
 }
 
 @Composable
-private fun TgChip(label: String, onClick: () -> Unit) {
+private fun TgChip(label: String, onClick: () -> Unit, icon: ImageVector? = null) {
     Surface(
         onClick = onClick,
         color = TgBlueTint,
         shape = RoundedCornerShape(14.dp),
     ) {
-        Text(
-            label,
+        Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            fontSize = 13.sp,
-            color = TgBlueDark,
-            fontWeight = FontWeight.Medium,
-        )
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = TgBlueDark, modifier = Modifier.size(14.dp))
+            }
+            Text(
+                label,
+                fontSize = 13.sp,
+                color = TgBlueDark,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 
@@ -842,6 +1311,18 @@ private fun SettingsSection(content: @Composable ColumnScope.() -> Unit) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), content = content)
     }
+}
+
+private fun senderNameColor(name: String): Color {
+    val palette = listOf(
+        Color(0xFF2AABEE),
+        Color(0xFF4DB269),
+        Color(0xFFE8A840),
+        Color(0xFF8B5CF6),
+        Color(0xFFE05454),
+        Color(0xFF1A8DD1),
+    )
+    return palette[name.hashCode().and(0x7FFFFFFF) % palette.size]
 }
 
 @Composable

@@ -8,11 +8,16 @@ import app.db.LocationEventsTable
 import app.db.MessageReceiptsTable
 import app.db.MessagesTable
 import app.db.SyncEventsTable
+import app.db.SystemSetupTable
 import app.db.UsersTable
 import app.db.dbQuery
 import app.error.ConflictException
+import app.error.ForbiddenException
 import app.error.NotFoundException
 import app.error.UnauthorizedException
+import com.familymessenger.contract.AdminCreateMemberResponse
+import com.familymessenger.contract.AdminMemberSummary
+import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.DeviceSession
@@ -25,6 +30,10 @@ import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.MessageType
 import com.familymessenger.contract.ProfileResponse
 import com.familymessenger.contract.QuickActionCode
+import com.familymessenger.contract.SetupBootstrapResponse
+import com.familymessenger.contract.SetupInviteSummary
+import com.familymessenger.contract.SetupMemberDraft
+import com.familymessenger.contract.SetupStatusResponse
 import com.familymessenger.contract.SyncPayload
 import com.familymessenger.contract.SystemEventPayload
 import com.familymessenger.contract.UserProfile
@@ -46,6 +55,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
+import java.security.SecureRandom
 import kotlin.time.Duration.Companion.minutes
 
 private const val ENTITY_MESSAGE = "message"
@@ -112,6 +122,7 @@ class ExposedAuthRepository : AuthRepository {
             userId = userId,
             deviceId = deviceId,
             familyId = familyId,
+            isAdmin = row[UsersTable.isAdmin],
         )
     }
 
@@ -144,6 +155,7 @@ class ExposedAuthRepository : AuthRepository {
             it[UsersTable.familyId] = familyId
             it[displayName] = invite[InvitesTable.displayName]
             it[role] = invite[InvitesTable.role]
+            it[isAdmin] = invite[InvitesTable.isAdmin]
             it[isActive] = true
             it[lastSeenAt] = now
             it[createdAt] = now
@@ -515,6 +527,232 @@ class ExposedDeviceRepository : DeviceRepository {
     }
 }
 
+class ExposedSetupRepository : SetupRepository {
+    private val secureRandom = SecureRandom()
+    private val inviteAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+    override suspend fun status(): SetupStatusResponse = dbQuery {
+        val setupRow = SystemSetupTable.selectAll().where { SystemSetupTable.id eq 1 }.singleOrNull()
+        val familyName = setupRow?.get(SystemSetupTable.familyId)?.let { familyId ->
+            FamiliesTable.selectAll().where { FamiliesTable.id eq familyId }.singleOrNull()?.get(FamiliesTable.name)
+        }
+        SetupStatusResponse(
+            initialized = setupRow != null,
+            familyName = familyName,
+        )
+    }
+
+    override suspend fun bootstrap(
+        masterPasswordHash: String,
+        familyName: String,
+        members: List<SetupMemberDraft>,
+        now: Instant,
+    ): SetupBootstrapResponse = dbQuery {
+        if (SystemSetupTable.selectAll().where { SystemSetupTable.id eq 1 }.singleOrNull() != null) {
+            throw ConflictException("System is already initialized")
+        }
+
+        val familyId = FamiliesTable.insert {
+            it[name] = familyName
+            it[createdAt] = now
+        }[FamiliesTable.id]
+
+        val invites = members.map { member ->
+            val inviteCode = nextInviteCode()
+            InvitesTable.insert {
+                it[InvitesTable.familyId] = familyId
+                it[code] = inviteCode
+                it[userId] = null
+                it[role] = member.role.name
+                it[isAdmin] = member.isAdmin
+                it[displayName] = member.displayName
+                it[isActive] = true
+                it[maxUses] = 1
+                it[usesCount] = 0
+                it[createdAt] = now
+                it[expiresAt] = null
+            }
+            SetupInviteSummary(
+                displayName = member.displayName,
+                role = member.role,
+                isAdmin = member.isAdmin,
+                inviteCode = inviteCode,
+            )
+        }
+
+        SystemSetupTable.insert {
+            it[id] = 1
+            it[SystemSetupTable.familyId] = familyId
+            it[SystemSetupTable.masterPasswordHash] = masterPasswordHash
+            it[initializedAt] = now
+        }
+
+        SetupBootstrapResponse(
+            family = FamilySummary(id = familyId, name = familyName),
+            invites = invites,
+        )
+    }
+
+    private fun nextInviteCode(length: Int = 8): String {
+        while (true) {
+            val code = buildString {
+                repeat(length) {
+                    append(inviteAlphabet[secureRandom.nextInt(inviteAlphabet.length)])
+                }
+            }
+            val exists = InvitesTable.selectAll().where { InvitesTable.code eq code }.singleOrNull() != null
+            if (!exists) {
+                return code
+            }
+        }
+    }
+}
+
+class ExposedAdminRepository : AdminRepository {
+    private val secureRandom = SecureRandom()
+    private val inviteAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+    override suspend fun masterPasswordHash(familyId: Long): String? = dbQuery {
+        SystemSetupTable
+            .selectAll()
+            .where { SystemSetupTable.familyId eq familyId }
+            .singleOrNull()
+            ?.get(SystemSetupTable.masterPasswordHash)
+    }
+
+    override suspend fun listMembers(principal: SessionPrincipal): AdminMembersResponse = dbQuery {
+        ensureAdmin(principal)
+        AdminMembersResponse(members = memberRows(principal.familyId))
+    }
+
+    override suspend fun createMember(
+        principal: SessionPrincipal,
+        displayName: String,
+        role: String,
+        isAdmin: Boolean,
+        now: Instant,
+    ): AdminCreateMemberResponse = dbQuery {
+        ensureAdmin(principal)
+        val normalizedDisplayName = displayName.trim()
+        val normalizedRole = role.uppercase()
+        val duplicateExists = InvitesTable.selectAll().where {
+            (InvitesTable.familyId eq principal.familyId) and
+                (InvitesTable.role eq normalizedRole) and
+                (InvitesTable.isActive eq true) and
+                (InvitesTable.displayName eq normalizedDisplayName)
+        }.singleOrNull() != null
+        if (duplicateExists) {
+            throw ConflictException("Family member with this display name already exists")
+        }
+
+        val inviteCode = nextInviteCode()
+        InvitesTable.insert {
+            it[InvitesTable.familyId] = principal.familyId
+            it[code] = inviteCode
+            it[userId] = null
+            it[InvitesTable.role] = normalizedRole
+            it[InvitesTable.isAdmin] = isAdmin
+            it[InvitesTable.displayName] = normalizedDisplayName
+            it[isActive] = true
+            it[maxUses] = 1
+            it[usesCount] = 0
+            it[createdAt] = now
+            it[expiresAt] = null
+        }
+
+        AdminCreateMemberResponse(
+            member = AdminMemberSummary(
+                inviteCode = inviteCode,
+                userId = null,
+                displayName = normalizedDisplayName,
+                role = UserRole.valueOf(normalizedRole),
+                isAdmin = isAdmin,
+                isRegistered = false,
+                isActive = true,
+            ),
+        )
+    }
+
+    override suspend fun removeMember(principal: SessionPrincipal, inviteCode: String, now: Instant): AdminMembersResponse = dbQuery {
+        ensureAdmin(principal)
+        val normalizedInviteCode = inviteCode.trim().uppercase()
+        val invite = InvitesTable.selectAll().where {
+            (InvitesTable.familyId eq principal.familyId) and
+                (InvitesTable.code eq normalizedInviteCode)
+        }.singleOrNull() ?: throw NotFoundException("Family member invite not found")
+
+        if (invite[InvitesTable.isAdmin]) {
+            val activeAdminCount = InvitesTable.selectAll().where {
+                (InvitesTable.familyId eq principal.familyId) and
+                    (InvitesTable.role eq UserRole.PARENT.name) and
+                    (InvitesTable.isAdmin eq true) and
+                    (InvitesTable.isActive eq true)
+            }.count()
+            if (activeAdminCount <= 1L) {
+                throw ConflictException("At least one administrator must remain active")
+            }
+        }
+
+        InvitesTable.update({ InvitesTable.id eq invite[InvitesTable.id] }) {
+            it[isActive] = false
+        }
+
+        invite[InvitesTable.userId]?.let { childUserId ->
+            UsersTable.update({ (UsersTable.id eq childUserId) and (UsersTable.familyId eq principal.familyId) }) {
+                it[isActive] = false
+            }
+            AuthTokensTable.update({ AuthTokensTable.userId eq childUserId }) {
+                it[revokedAt] = now
+            }
+        }
+
+        AdminMembersResponse(members = memberRows(principal.familyId))
+    }
+
+    private fun memberRows(familyId: Long): List<AdminMemberSummary> =
+        InvitesTable
+            .selectAll()
+            .where {
+                (InvitesTable.familyId eq familyId) and
+                    (InvitesTable.role neq UserRole.FAMILY.name)
+            }
+            .orderBy(InvitesTable.createdAt to SortOrder.ASC)
+            .map { invite ->
+                val boundUser = invite[InvitesTable.userId]?.let { userId ->
+                    UsersTable.selectAll().where { UsersTable.id eq userId }.singleOrNull()
+                }
+                AdminMemberSummary(
+                    inviteCode = invite[InvitesTable.code],
+                    userId = invite[InvitesTable.userId],
+                    displayName = invite[InvitesTable.displayName],
+                    role = UserRole.valueOf(invite[InvitesTable.role]),
+                    isAdmin = invite[InvitesTable.isAdmin],
+                    isRegistered = invite[InvitesTable.userId] != null,
+                    isActive = invite[InvitesTable.isActive] && (boundUser?.get(UsersTable.isActive) ?: true),
+                )
+            }
+
+    private fun ensureAdmin(principal: SessionPrincipal) {
+        if (!principal.isAdmin) {
+            throw ForbiddenException("Administrator access required")
+        }
+    }
+
+    private fun nextInviteCode(length: Int = 8): String {
+        while (true) {
+            val code = buildString {
+                repeat(length) {
+                    append(inviteAlphabet[secureRandom.nextInt(inviteAlphabet.length)])
+                }
+            }
+            val exists = InvitesTable.selectAll().where { InvitesTable.code eq code }.singleOrNull() != null
+            if (!exists) {
+                return code
+            }
+        }
+    }
+}
+
 private fun recordSyncEvent(familyId: Long, entityType: String, entityId: Long, now: Instant) {
     SyncEventsTable.insert {
         it[SyncEventsTable.familyId] = familyId
@@ -529,6 +767,7 @@ private fun ResultRow.toUserProfile(): UserProfile = UserProfile(
     familyId = this[UsersTable.familyId],
     displayName = this[UsersTable.displayName],
     role = UserRole.valueOf(this[UsersTable.role]),
+    isAdmin = this[UsersTable.isAdmin],
     lastSeenAt = this[UsersTable.lastSeenAt],
 )
 
@@ -538,6 +777,7 @@ private fun ResultRow.toFamilyChatContact(familyId: Long): ContactSummary = Cont
         familyId = familyId,
         displayName = this[FamiliesTable.name],
         role = UserRole.FAMILY,
+        isAdmin = false,
         lastSeenAt = null,
     ),
     isOnline = true,

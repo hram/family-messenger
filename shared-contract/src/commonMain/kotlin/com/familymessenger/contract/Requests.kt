@@ -10,6 +10,32 @@ data class LoginRequest(
 )
 
 @Serializable
+data class SetupBootstrapRequest(
+    val masterPassword: String,
+    val familyName: String,
+    val members: List<SetupMemberDraft>,
+)
+
+@Serializable
+data class VerifyAdminAccessRequest(
+    val masterPassword: String,
+)
+
+@Serializable
+data class AdminCreateMemberRequest(
+    val masterPassword: String,
+    val displayName: String,
+    val role: UserRole,
+    val isAdmin: Boolean = false,
+)
+
+@Serializable
+data class AdminRemoveMemberRequest(
+    val masterPassword: String,
+    val inviteCode: String,
+)
+
+@Serializable
 data class SendMessageRequest(
     val recipientUserId: Long,
     val clientMessageUuid: String,

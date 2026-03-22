@@ -16,7 +16,7 @@ app:
     password: family
     driver: org.postgresql.Driver
     bootstrapSchema: true
-    seedOnStart: true
+    seedOnStart: false
   auth:
     tokenTtlHours: 720
   rateLimit:

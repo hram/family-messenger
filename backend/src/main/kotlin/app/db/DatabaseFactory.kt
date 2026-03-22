@@ -14,16 +14,17 @@ class DatabaseFactory(
     private val config: DatabaseConfig,
 ) {
     fun connectAndBootstrap() {
-        Database.connect(
+        appDatabase = Database.connect(
             url = config.jdbcUrl,
             driver = config.driver,
             user = config.user,
             password = config.password,
         )
 
-        if (config.bootstrapSchema) {
-            transaction {
+        transaction {
+            if (config.bootstrapSchema) {
                 SchemaUtils.createMissingTablesAndColumns(
+                    SystemSetupTable,
                     FamiliesTable,
                     UsersTable,
                     DevicesTable,
@@ -38,7 +39,11 @@ class DatabaseFactory(
                 exec("DROP INDEX IF EXISTS ux_devices_family_name_platform")
                 exec("ALTER TABLE devices DROP COLUMN IF EXISTS device_name")
                 exec("ALTER TABLE invites ADD COLUMN IF NOT EXISTS user_id BIGINT")
-                exec("CREATE INDEX IF NOT EXISTS idx_invites_user_id ON invites(user_id)")
+                exec("ALTER TABLE invites ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+                exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+                exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS family_id BIGINT")
+                exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS master_password_hash VARCHAR(255)")
+                exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS initialized_at TIMESTAMP")
                 exec(
                     """
                     UPDATE invites AS i
@@ -73,11 +78,39 @@ class DatabaseFactory(
                       AND u.id <> i.user_id
                     """.trimIndent(),
                 )
+                exec(
+                    """
+                    UPDATE invites
+                    SET is_admin = TRUE
+                    WHERE role = 'PARENT'
+                      AND code = 'PARENT-DEMO'
+                    """.trimIndent(),
+                )
+                exec(
+                    """
+                    UPDATE users
+                    SET is_admin = TRUE
+                    WHERE role = 'PARENT'
+                      AND id = (
+                        SELECT MIN(id) FROM users WHERE role = 'PARENT' AND is_active = TRUE
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM users WHERE role = 'PARENT' AND is_active = TRUE AND is_admin = TRUE
+                      )
+                    """.trimIndent(),
+                )
+                if (SystemSetupTable.selectAll().empty() && !FamiliesTable.selectAll().empty()) {
+                    val familyId = FamiliesTable.selectAll().first()[FamiliesTable.id]
+                    SystemSetupTable.insertIgnore {
+                        it[id] = 1
+                        it[SystemSetupTable.familyId] = familyId
+                        it[masterPasswordHash] = "legacy-bootstrap-placeholder"
+                        it[initializedAt] = now()
+                    }
+                }
             }
-        }
 
-        if (config.seedOnStart) {
-            transaction {
+            if (config.seedOnStart) {
                 if (FamiliesTable.selectAll().empty()) {
                     val familyId = FamiliesTable.insert {
                         it[name] = "Demo Family"
@@ -89,6 +122,7 @@ class DatabaseFactory(
                         it[code] = "PARENT-DEMO"
                         it[userId] = null
                         it[role] = "PARENT"
+                        it[isAdmin] = true
                         it[displayName] = "Parent"
                         it[isActive] = true
                         it[maxUses] = 1
@@ -102,6 +136,7 @@ class DatabaseFactory(
                         it[code] = "CHILD-DEMO"
                         it[userId] = null
                         it[role] = "CHILD"
+                        it[isAdmin] = false
                         it[displayName] = "Child"
                         it[isActive] = true
                         it[maxUses] = 1
@@ -109,10 +144,22 @@ class DatabaseFactory(
                         it[createdAt] = now()
                         it[expiresAt] = null
                     }
+
+                    SystemSetupTable.insertIgnore {
+                        it[id] = 1
+                        it[SystemSetupTable.familyId] = familyId
+                        it[masterPasswordHash] = "seed-bootstrap-placeholder"
+                        it[initializedAt] = now()
+                    }
                 }
             }
         }
     }
 }
 
-suspend fun <T> dbQuery(block: suspend () -> T): T = newSuspendedTransaction(Dispatchers.IO) { block() }
+private var appDatabase: Database? = null
+
+suspend fun <T> dbQuery(block: suspend () -> T): T =
+    newSuspendedTransaction(db = checkNotNull(appDatabase) { "Database is not initialized" }, context = Dispatchers.IO) {
+        block()
+    }

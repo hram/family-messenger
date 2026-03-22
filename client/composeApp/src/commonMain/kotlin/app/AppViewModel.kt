@@ -4,6 +4,7 @@ import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
+import com.familymessenger.contract.UserRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +25,11 @@ class AppViewModel(
     private val sessionRepository: SessionRepository,
     private val syncEngine: SyncEngine,
     private val login: LoginUseCase,
+    private val loadSetupStatus: LoadSetupStatusUseCase,
+    private val bootstrapSystem: BootstrapSystemUseCase,
+    private val verifyAdminAccess: VerifyAdminAccessUseCase,
+    private val createMember: CreateMemberUseCase,
+    private val removeMember: RemoveMemberUseCase,
     private val loadContacts: LoadContactsUseCase,
     private val sendTextMessageUseCase: SendTextMessageUseCase,
     private val sendQuickActionUseCase: SendQuickActionUseCase,
@@ -49,7 +55,13 @@ class AppViewModel(
                     platform = platformInfo.type,
                     platformName = platformInfo.displayName,
                     currentUser = session?.auth?.user,
-                    screen = if (session == null) Screen.ONBOARDING else mutableState.value.screen.takeIf { it != Screen.ONBOARDING } ?: Screen.CONTACTS,
+                    admin = if (session?.auth?.user?.isAdmin == true) mutableState.value.admin else AdminState(),
+                    screen = when {
+                        session == null && platformInfo.type == PlatformType.WEB && mutableState.value.setup.isInitialized == false -> Screen.SETUP
+                        session == null -> Screen.ONBOARDING
+                        session?.auth?.user?.isAdmin == false && mutableState.value.screen == Screen.ADMIN -> Screen.CONTACTS
+                        else -> mutableState.value.screen.takeIf { it != Screen.ONBOARDING && it != Screen.SETUP } ?: Screen.CONTACTS
+                    },
                     onboarding = mutableState.value.onboarding.copy(
                         baseUrl = settings.serverBaseUrl,
                     ),
@@ -69,6 +81,21 @@ class AppViewModel(
                 ),
                 settings = SettingsState(settings.pollingEnabled, settings.pushEnabled),
             )
+            runCatching { loadSetupStatus() }
+                .onSuccess { setupStatus ->
+                    mutableState.value = mutableState.value.copy(
+                        setup = mutableState.value.setup.copy(isInitialized = setupStatus.initialized),
+                        screen = when {
+                            sessionRepository.restore() == null && platformInfo.type == PlatformType.WEB && !setupStatus.initialized -> Screen.SETUP
+                            else -> mutableState.value.screen
+                        },
+                    )
+                    if (!setupStatus.initialized && platformInfo.type != PlatformType.WEB) {
+                        mutableState.value = mutableState.value.copy(
+                            statusMessage = "System is not initialized yet. Complete setup in the web client.",
+                        )
+                    }
+                }
             if (sessionRepository.restore() != null) {
                 runCatching {
                     val session = sessionRepository.refreshSessionFromServer()
@@ -84,7 +111,7 @@ class AppViewModel(
                     sessionRepository.logout()
                     syncEngine.stop()
                     mutableState.value = mutableState.value.copy(
-                        screen = Screen.ONBOARDING,
+                        screen = fallbackLoggedOutScreen(),
                         currentUser = null,
                         contacts = emptyList(),
                         messages = emptyList(),
@@ -101,7 +128,104 @@ class AppViewModel(
 
     fun updateInviteCode(value: String) = mutate { copy(onboarding = onboarding.copy(inviteCode = value)) }
 
+    fun updateSetupMasterPassword(value: String) = mutate { copy(setup = setup.copy(masterPassword = value)) }
+
+    fun updateSetupMasterPasswordConfirm(value: String) = mutate { copy(setup = setup.copy(masterPasswordConfirm = value)) }
+
+    fun updateSetupFamilyName(value: String) = mutate { copy(setup = setup.copy(familyName = value)) }
+
+    fun updateSetupMemberName(index: Int, value: String) = mutate {
+        copy(setup = setup.copy(members = setup.members.updated(index) { it.copy(displayName = value) }))
+    }
+
+    fun updateSetupMemberRole(index: Int, role: UserRole) = mutate {
+        copy(
+            setup = setup.copy(
+                members = setup.members.updated(index) {
+                    it.copy(
+                        role = role,
+                        isAdmin = if (role == UserRole.PARENT) it.isAdmin else false,
+                    )
+                },
+            ),
+        )
+    }
+
+    fun updateSetupMemberAdmin(index: Int, isAdmin: Boolean) = mutate {
+        copy(
+            setup = setup.copy(
+                members = setup.members.updated(index) {
+                    if (it.role == UserRole.PARENT) it.copy(isAdmin = isAdmin) else it.copy(isAdmin = false)
+                },
+            ),
+        )
+    }
+
+    fun addSetupMember() = mutate {
+        copy(setup = setup.copy(members = setup.members + SetupMemberInputState()))
+    }
+
+    fun removeSetupMember(index: Int) = mutate {
+        copy(
+            setup = setup.copy(
+                members = if (setup.members.size <= 1) {
+                    setup.members
+                } else {
+                    setup.members.filterIndexed { currentIndex, _ -> currentIndex != index }
+                },
+            ),
+        )
+    }
+
+    fun proceedFromSetupPasswordStep() {
+        val setup = state.value.setup
+        when {
+            setup.masterPassword.isBlank() -> mutate { copy(errorMessage = "Master password is required") }
+            setup.masterPasswordConfirm.isBlank() -> mutate { copy(errorMessage = "Please confirm the master password") }
+            setup.masterPassword != setup.masterPasswordConfirm -> mutate { copy(errorMessage = "Master password confirmation does not match") }
+            else -> mutate { copy(setup = setup.copy(step = 2), errorMessage = null) }
+        }
+    }
+
+    fun goToSetupStep(step: Int) = mutate { copy(setup = setup.copy(step = step.coerceIn(1, 3))) }
+
     fun updateDraftMessage(value: String) = mutate { copy(draftMessage = value) }
+
+    fun submitSetup() {
+        runBusy {
+            val setup = state.value.setup
+            if (setup.masterPassword != setup.masterPasswordConfirm) {
+                error("Master password confirmation does not match")
+            }
+            settingsRepository.updateServerBaseUrl(state.value.onboarding.baseUrl)
+            val response = bootstrapSystem(
+                masterPassword = setup.masterPassword,
+                familyName = setup.familyName,
+                members = setup.members,
+            )
+            mutableState.value = mutableState.value.copy(
+                screen = Screen.SETUP,
+                setup = setup.copy(
+                    step = 3,
+                    isInitialized = true,
+                    generatedInvites = response.invites,
+                    masterPassword = "",
+                    masterPasswordConfirm = "",
+                ),
+                admin = AdminState(),
+                statusMessage = "System initialized",
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun finishSetup() = mutate {
+        copy(
+            screen = Screen.ONBOARDING,
+            setup = setup.copy(generatedInvites = emptyList()),
+            onboarding = onboarding.copy(inviteCode = ""),
+        )
+    }
 
     fun submitAuth() {
         runBusy {
@@ -153,6 +277,76 @@ class AppViewModel(
     fun backToContacts() = mutate { copy(screen = Screen.CONTACTS, selectedContactId = null, selectedContactName = null) }
 
     fun openSettings() = mutate { copy(screen = Screen.SETTINGS) }
+
+    fun openAdmin() = mutate { copy(screen = Screen.ADMIN, errorMessage = null, statusMessage = null) }
+
+    fun updateAdminMasterPassword(value: String) = mutate { copy(admin = admin.copy(masterPassword = value)) }
+
+    fun updateAdminNewMemberName(value: String) = mutate { copy(admin = admin.copy(newMemberName = value)) }
+
+    fun updateAdminNewMemberRole(role: UserRole) = mutate {
+        copy(admin = admin.copy(newMemberRole = role, newMemberIsAdmin = if (role == UserRole.PARENT) admin.newMemberIsAdmin else false))
+    }
+
+    fun updateAdminNewMemberIsAdmin(value: Boolean) = mutate {
+        copy(admin = admin.copy(newMemberIsAdmin = if (admin.newMemberRole == UserRole.PARENT) value else false))
+    }
+
+    fun unlockAdmin() {
+        runBusy {
+            val response = verifyAdminAccess(state.value.admin.masterPassword)
+            mutableState.value = mutableState.value.copy(
+                screen = Screen.ADMIN,
+                admin = mutableState.value.admin.copy(
+                    unlocked = true,
+                    members = response.members,
+                ),
+                errorMessage = null,
+                statusMessage = "Administrator access granted",
+            )
+        }
+    }
+
+    fun createAdminMember() {
+        runBusy {
+            val admin = state.value.admin
+            val response = createMember(admin.masterPassword, admin.newMemberName, admin.newMemberRole, admin.newMemberIsAdmin)
+            mutableState.value = mutableState.value.copy(
+                admin = admin.copy(
+                    unlocked = true,
+                    newMemberName = "",
+                    newMemberRole = UserRole.CHILD,
+                    newMemberIsAdmin = false,
+                    members = admin.members + response.member,
+                ),
+                errorMessage = null,
+                statusMessage = "Family member invite created",
+            )
+        }
+    }
+
+    fun removeAdminMember(inviteCode: String) {
+        runBusy {
+            val admin = state.value.admin
+            val response = removeMember(admin.masterPassword, inviteCode)
+            val contacts = runCatching { loadContacts() }.getOrElse { state.value.contacts }
+            val selectedContactStillExists = state.value.selectedContactId?.let { selectedId ->
+                contacts.any { it.user.id == selectedId }
+            } ?: false
+            mutableState.value = mutableState.value.copy(
+                admin = admin.copy(
+                    unlocked = true,
+                    members = response.members,
+                ),
+                contacts = contacts,
+                selectedContactId = state.value.selectedContactId?.takeIf { selectedContactStillExists },
+                selectedContactName = state.value.selectedContactName?.takeIf { selectedContactStillExists },
+                messages = if (selectedContactStillExists) state.value.messages else emptyList(),
+                errorMessage = null,
+                statusMessage = "Family member removed",
+            )
+        }
+    }
 
     fun sendCurrentDraft() {
         val contactId = state.value.selectedContactId ?: return
@@ -219,13 +413,14 @@ class AppViewModel(
             sessionRepository.logout()
             syncEngine.stop()
             mutableState.value = mutableState.value.copy(
-                screen = Screen.ONBOARDING,
+                screen = fallbackLoggedOutScreen(),
                 currentUser = null,
                 contacts = emptyList(),
                 messages = emptyList(),
                 selectedContactId = null,
                 selectedContactName = null,
                 draftMessage = "",
+                admin = AdminState(),
                 statusMessage = "Сессия очищена",
             )
         }
@@ -249,6 +444,9 @@ class AppViewModel(
         )
     }
 
+    private fun fallbackLoggedOutScreen(): Screen =
+        if (platformInfo.type == PlatformType.WEB && mutableState.value.setup.isInitialized == false) Screen.SETUP else Screen.ONBOARDING
+
     private fun runBusy(block: suspend () -> Unit) {
         scope.launch {
             mutableState.value = mutableState.value.copy(isBusy = true, errorMessage = null)
@@ -264,3 +462,6 @@ class AppViewModel(
         mutableState.value = mutableState.value.transform()
     }
 }
+
+private fun <T> List<T>.updated(index: Int, transform: (T) -> T): List<T> =
+    mapIndexed { currentIndex, item -> if (currentIndex == index) transform(item) else item }

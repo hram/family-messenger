@@ -12,11 +12,20 @@ object FamiliesTable : Table("families") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object SystemSetupTable : Table("system_setup") {
+    val id = integer("id")
+    val familyId = long("family_id").nullable()
+    val masterPasswordHash = varchar("master_password_hash", 255)
+    val initializedAt = timestamp("initialized_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
 object UsersTable : Table("users") {
     val id = long("id").autoIncrement()
     val familyId = long("family_id").index()
     val displayName = varchar("display_name", 120)
     val role = varchar("role", 32)
+    val isAdmin = bool("is_admin").default(false)
     val isActive = bool("is_active").default(true)
     val lastSeenAt = timestamp("last_seen_at").nullable()
     val createdAt = timestamp("created_at")
@@ -45,6 +54,7 @@ object InvitesTable : Table("invites") {
     val code = varchar("code", 64).uniqueIndex()
     val userId = long("user_id").nullable().index()
     val role = varchar("role", 32)
+    val isAdmin = bool("is_admin").default(false)
     val displayName = varchar("display_name", 120)
     val isActive = bool("is_active").default(true)
     val maxUses = integer("max_uses").default(1)

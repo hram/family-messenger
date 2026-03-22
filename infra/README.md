@@ -12,7 +12,7 @@
 ## Что делает compose
 
 - поднимает `postgres:16-alpine`
-- инициализирует БД через [schema.sql](/home/hram/projects/family-messenger/backend/schema.sql) и [seed.sql](/home/hram/projects/family-messenger/backend/seed.sql)
+- инициализирует БД через [schema.sql](/home/hram/projects/family-messenger/backend/schema.sql)
 - собирает backend из исходников через multi-stage Docker build
 - запускает fat jar Ktor backend
 
@@ -32,14 +32,14 @@ cp .env.example .env
 
 Это обязательный шаг. Без файла `.env` `docker compose` подставит пустые значения в `${DB_*}`, `${SERVER_PORT}` и другие переменные, из-за чего запуск сломается ошибками вида `no port specified: :<empty>`.
 
-3. Для запуска с SQL init от Postgres на чистом volume оставить:
+3. Для первого запуска системы через web wizard оставить:
 
 ```env
 DB_BOOTSTRAP_SCHEMA=false
 DB_SEED_ON_START=false
 ```
 
-Это важно: в compose схема и seed уже накатываются через `docker-entrypoint-initdb.d`, поэтому runtime-bootstrap в backend лучше отключить, чтобы не дублировать инициализацию.
+Это важно: схема будет создана Postgres init-скриптом, а сама семья и invite-коды будут созданы через `GET/POST /api/setup/*`, а не через `seed.sql`.
 
 4. Запустить:
 
@@ -82,7 +82,7 @@ docker compose restart backend
 docker compose down
 ```
 
-Если нужно сбросить БД и заново прогнать `schema.sql` и `seed.sql`:
+Если нужно сбросить БД и заново пройти wizard первого запуска:
 
 ```bash
 docker compose down -v
@@ -130,7 +130,7 @@ cd ..
 docker compose -f docker-compose.local.yml down
 ```
 
-Если нужно сбросить volume и заново накатить `schema.sql` и `seed.sql`:
+Если нужно сбросить volume и заново пройти wizard первого запуска:
 
 ```bash
 docker compose -f docker-compose.local.yml down -v

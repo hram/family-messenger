@@ -4,11 +4,19 @@ CREATE TABLE IF NOT EXISTS families (
     created_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS system_setup (
+    id INTEGER PRIMARY KEY,
+    family_id BIGINT NULL,
+    master_password_hash VARCHAR(255) NOT NULL,
+    initialized_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     family_id BIGINT NOT NULL,
     display_name VARCHAR(120) NOT NULL,
     role VARCHAR(32) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_seen_at TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL
@@ -37,6 +45,7 @@ CREATE TABLE IF NOT EXISTS invites (
     user_id BIGINT NULL,
     role VARCHAR(32) NOT NULL,
     display_name VARCHAR(120) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     max_uses INTEGER NOT NULL DEFAULT 1,
     uses_count INTEGER NOT NULL DEFAULT 0,

@@ -8,3 +8,4 @@ local.properties
 *.env
 !.env.example
 !*.env.example
+/infra/.creds

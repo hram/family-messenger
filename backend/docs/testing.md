@@ -1,5 +1,36 @@
 # Backend Testing
 
+## First-Run Setup Scenario
+
+Интеграционный сценарий первого запуска покрыт тестами в [BackendIntegrationTest.kt](/home/hram/projects/family-messenger/backend/src/test/kotlin/app/BackendIntegrationTest.kt):
+
+- `setupStatusIsFalseOnCleanDatabaseWithoutSeed`
+- `bootstrapInitializesSystemAndReturnsInviteCodes`
+- `bootstrapCannotRunTwice`
+
+Они проверяют:
+
+- чистая БД без `seedOnStart` возвращает `initialized = false`
+- bootstrap создаёт семью и invite-коды
+- bootstrap требует хотя бы одного parent-administrator
+- по сгенерированному invite-коду можно сразу логиниться
+- повторный bootstrap запрещён
+
+## Administration Scenario
+
+Интеграционный сценарий администрирования покрыт тестами в [BackendIntegrationTest.kt](/home/hram/projects/family-messenger/backend/src/test/kotlin/app/BackendIntegrationTest.kt):
+
+- `administratorCanManageFamilyMembersAfterUnlockingWithMasterPassword`
+- `childCannotAccessAdministrationRoutes`
+
+Они проверяют:
+
+- только parent с `isAdmin = true` получает доступ к admin routes
+- раздел администрирования действительно требует master password поверх bearer token
+- администратор может создать invite и для ребёнка, и для родителя
+- новый ребёнок и новый родитель могут войти по выданным invite-кодам
+- администратор может удалить участника, после чего invite и связанные сессии перестают работать
+
 ## Auth Switching Scenario
 
 Основной интеграционный сценарий смены пользователей описан в тесте [BackendIntegrationTest.kt](/home/hram/projects/family-messenger/backend/src/test/kotlin/app/BackendIntegrationTest.kt#L200) `authSwitchingKeepsUsersChatsAndMessagesSeparated`.
@@ -97,6 +128,7 @@
 - у каждого пользователя список чатов перестраивается корректно для его сессии
 - семейный чат всегда один и тот же: `recipientUserId = 0`
 - сообщения от всех трёх участников попадают в одну общую историю
+- каждый message UUID в общей истории сохраняет правильный `senderUserId`, чтобы клиент мог показать имя отправителя
 - после переключения между разными пользователями история семейного чата не распадается на отдельные копии
 
 ### Чего он не проверяет

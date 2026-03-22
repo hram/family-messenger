@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.postgresql)
     implementation(libs.kotlinx.datetime)
     implementation(libs.logback.classic)
+    implementation(libs.jbcrypt)
 
     testImplementation("com.h2database:h2:2.3.232")
     testImplementation(libs.ktor.server.test.host)

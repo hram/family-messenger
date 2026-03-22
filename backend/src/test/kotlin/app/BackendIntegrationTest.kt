@@ -23,13 +23,82 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.file.Files
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.util.UUID
 
 class BackendIntegrationTest {
+    @Test
+    fun setupStatusIsFalseOnCleanDatabaseWithoutSeed() = backendTestApp(seedOnStart = false) {
+        val response = client.get("/api/setup/status")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.json()
+        assertTrue(body.success())
+        assertEquals("false", body.data().req("initialized").text())
+    }
+
+    @Test
+    fun bootstrapInitializesSystemAndReturnsInviteCodes() = backendTestApp(seedOnStart = false) {
+        val bootstrap = bootstrap(
+            """
+                {
+                  "masterPassword": "super-secret-pass",
+                  "familyName": "Family One",
+                  "members": [
+                    { "displayName": "Masha", "role": "parent", "isAdmin": true },
+                    { "displayName": "Pasha", "role": "child" }
+                  ]
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(HttpStatusCode.OK, bootstrap.status)
+        val body = bootstrap.json()
+        assertTrue(body.success())
+        assertEquals("Family One", body.data().req("family").obj().req("name").text())
+        assertEquals(2, body.data().req("invites").arr().size)
+        assertTrue(body.data().req("invites").arr().any { it.jsonObject.req("isAdmin").jsonPrimitive.boolean })
+
+        val parentInvite = body.data().req("invites").arr().first { it.jsonObject.req("displayName").text() == "Masha" }
+            .jsonObject.req("inviteCode").text()
+
+        val login = login(
+            inviteCode = parentInvite,
+            platform = "web",
+        )
+        assertEquals(HttpStatusCode.OK, login.status)
+        assertEquals("true", login.json().data().req("user").obj().req("isAdmin").text())
+
+        val statusAfterBootstrap = client.get("/api/setup/status").json()
+        assertEquals("true", statusAfterBootstrap.data().req("initialized").text())
+        assertEquals("Family One", statusAfterBootstrap.data().req("familyName").text())
+    }
+
+    @Test
+    fun bootstrapCannotRunTwice() = backendTestApp(seedOnStart = false) {
+        val payload = """
+            {
+              "masterPassword": "super-secret-pass",
+              "familyName": "Family One",
+              "members": [
+                { "displayName": "Masha", "role": "parent", "isAdmin": true }
+              ]
+            }
+        """.trimIndent()
+
+        val first = bootstrap(payload)
+        val second = bootstrap(payload)
+
+        assertEquals(HttpStatusCode.OK, first.status)
+        assertEquals(HttpStatusCode.Conflict, second.status)
+        assertEquals(ErrorCode.CONFLICT.name, second.json().errorCode())
+    }
+
     @Test
     fun loginReturnsSessionPayload() = backendTestApp {
         val response = login(
@@ -42,6 +111,7 @@ class BackendIntegrationTest {
         assertTrue(body.success())
         assertEquals("Parent", body.data().req("user").obj().req("displayName").text())
         assertEquals("parent", body.data().req("user").obj().req("role").text())
+        assertEquals("true", body.data().req("user").obj().req("isAdmin").text())
         assertTrue(body.data().req("session").obj().req("token").text().isNotBlank())
     }
 
@@ -329,10 +399,12 @@ class BackendIntegrationTest {
         val parentRegistration = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
+            clientKey = "family-group-parent-registration",
         ).json()
         val childRegistration = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
+            clientKey = "family-group-child-registration",
         ).json()
 
         insertInvite(
@@ -344,19 +416,23 @@ class BackendIntegrationTest {
         val siblingRegistration = login(
             inviteCode = "SIBLING-DEMO",
             platform = "desktop",
+            clientKey = "family-group-sibling-registration",
         ).json()
 
         val parentSession = login(
             inviteCode = "PARENT-DEMO",
             platform = "desktop",
+            clientKey = "family-group-parent-session",
         ).json()
         val childSession = login(
             inviteCode = "CHILD-DEMO",
             platform = "desktop",
+            clientKey = "family-group-child-session",
         ).json()
         val siblingSession = login(
             inviteCode = "SIBLING-DEMO",
             platform = "desktop",
+            clientKey = "family-group-sibling-session",
         ).json()
 
         val parentToken = parentSession.token()
@@ -405,6 +481,11 @@ class BackendIntegrationTest {
         val childMessagesAfterParent = childSyncAfterParent.data().req("messages").arr()
         assertTrue(childMessagesAfterParent.any { it.jsonObject.req("clientMessageUuid").text() == parentFamilyMessageUuid })
         assertTrue(childMessagesAfterParent.all { it.jsonObject.req("recipientUserId").text() == "0" })
+        assertEquals(
+            parentUserId,
+            childMessagesAfterParent.first { it.jsonObject.req("clientMessageUuid").text() == parentFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
 
         val childFamilyMessageUuid = UUID.randomUUID().toString()
         authorizedPost(
@@ -427,6 +508,16 @@ class BackendIntegrationTest {
         assertTrue(siblingMessagesAfterTwo.any { it.jsonObject.req("clientMessageUuid").text() == parentFamilyMessageUuid })
         assertTrue(siblingMessagesAfterTwo.any { it.jsonObject.req("clientMessageUuid").text() == childFamilyMessageUuid })
         assertTrue(siblingMessagesAfterTwo.all { it.jsonObject.req("recipientUserId").text() == "0" })
+        assertEquals(
+            parentUserId,
+            siblingMessagesAfterTwo.first { it.jsonObject.req("clientMessageUuid").text() == parentFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
+        assertEquals(
+            childUserId,
+            siblingMessagesAfterTwo.first { it.jsonObject.req("clientMessageUuid").text() == childFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
 
         val siblingFamilyMessageUuid = UUID.randomUUID().toString()
         authorizedPost(
@@ -450,9 +541,21 @@ class BackendIntegrationTest {
         assertTrue(parentMessagesAfterThree.any { it.jsonObject.req("clientMessageUuid").text() == childFamilyMessageUuid })
         assertTrue(parentMessagesAfterThree.any { it.jsonObject.req("clientMessageUuid").text() == siblingFamilyMessageUuid })
         assertTrue(parentMessagesAfterThree.all { it.jsonObject.req("recipientUserId").text() == "0" })
-        assertTrue(parentMessagesAfterThree.any { it.jsonObject.req("senderUserId").long() == parentUserId })
-        assertTrue(parentMessagesAfterThree.any { it.jsonObject.req("senderUserId").long() == childUserId })
-        assertTrue(parentMessagesAfterThree.any { it.jsonObject.req("senderUserId").long() == siblingUserId })
+        assertEquals(
+            parentUserId,
+            parentMessagesAfterThree.first { it.jsonObject.req("clientMessageUuid").text() == parentFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
+        assertEquals(
+            childUserId,
+            parentMessagesAfterThree.first { it.jsonObject.req("clientMessageUuid").text() == childFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
+        assertEquals(
+            siblingUserId,
+            parentMessagesAfterThree.first { it.jsonObject.req("clientMessageUuid").text() == siblingFamilyMessageUuid }
+                .jsonObject.req("senderUserId").long(),
+        )
     }
 
     @Test
@@ -480,6 +583,153 @@ class BackendIntegrationTest {
         assertTrue(body.success())
         assertEquals("Parent", body.data().req("user").obj().req("displayName").text())
         assertEquals("Demo Family", body.data().req("family").obj().req("name").text())
+        assertEquals("true", body.data().req("user").obj().req("isAdmin").text())
+    }
+
+    @Test
+    fun bootstrapRequiresAtLeastOneParentAdministrator() = backendTestApp(seedOnStart = false) {
+        val response = bootstrap(
+            """
+                {
+                  "masterPassword": "super-secret-pass",
+                  "familyName": "Family One",
+                  "members": [
+                    { "displayName": "Masha", "role": "parent", "isAdmin": false },
+                    { "displayName": "Pasha", "role": "child" }
+                  ]
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        val body = response.json()
+        assertFalse(body.success())
+        assertEquals(ErrorCode.INVALID_REQUEST.name, body.errorCode())
+    }
+
+    @Test
+    fun administratorCanManageFamilyMembersAfterUnlockingWithMasterPassword() = backendTestApp(seedOnStart = false) {
+        val bootstrap = bootstrap(
+            """
+                {
+                  "masterPassword": "super-secret-pass",
+                  "familyName": "Family One",
+                  "members": [
+                    { "displayName": "Masha", "role": "parent", "isAdmin": true },
+                    { "displayName": "Pasha", "role": "child" }
+                  ]
+                }
+            """.trimIndent(),
+        ).json()
+
+        val bootstrapParentInvite = bootstrap.data().req("invites").arr()
+            .first { it.jsonObject.req("displayName").text() == "Masha" }
+            .jsonObject.req("inviteCode").text()
+
+        val parentAuth = login(bootstrapParentInvite, "web").json()
+        val parentToken = parentAuth.token()
+
+        val unlock = authorizedPost(
+            path = "/api/admin/verify",
+            token = parentToken,
+            body = """{"masterPassword":"super-secret-pass"}""",
+        )
+        assertEquals(HttpStatusCode.OK, unlock.status)
+        val unlockBody = unlock.json()
+        assertTrue(unlockBody.success())
+        val initialMembers = unlockBody.data().req("members").arr()
+        assertEquals(2, initialMembers.size)
+        assertTrue(initialMembers.any { it.jsonObject.req("displayName").text() == "Masha" })
+        assertTrue(initialMembers.any { it.jsonObject.req("displayName").text() == "Pasha" })
+
+        val createChild = authorizedPost(
+            path = "/api/admin/members/create",
+            token = parentToken,
+            body = """{"masterPassword":"super-secret-pass","displayName":"Sasha","role":"child","isAdmin":false}""",
+        )
+        assertEquals(HttpStatusCode.OK, createChild.status)
+        val createChildBody = createChild.json()
+        assertTrue(createChildBody.success())
+        val child = createChildBody.data().req("member").obj()
+        assertEquals("Sasha", child.req("displayName").text())
+        assertEquals("child", child.req("role").text())
+        assertEquals("false", child.req("isAdmin").text())
+        assertEquals("false", child.req("isRegistered").text())
+        assertEquals("true", child.req("isActive").text())
+        val childInvite = child.req("inviteCode").text()
+        assertTrue(childInvite.isNotBlank())
+
+        val createParent = authorizedPost(
+            path = "/api/admin/members/create",
+            token = parentToken,
+            body = """{"masterPassword":"super-secret-pass","displayName":"Olga","role":"parent","isAdmin":true}""",
+        )
+        assertEquals(HttpStatusCode.OK, createParent.status)
+        val createParentBody = createParent.json()
+        assertTrue(createParentBody.success())
+        val parent = createParentBody.data().req("member").obj()
+        assertEquals("Olga", parent.req("displayName").text())
+        assertEquals("parent", parent.req("role").text())
+        assertEquals("true", parent.req("isAdmin").text())
+        val createdParentInvite = parent.req("inviteCode").text()
+
+        val newChildLogin = login(childInvite, "android").json()
+        assertEquals("Sasha", newChildLogin.data().req("user").obj().req("displayName").text())
+        assertEquals("false", newChildLogin.data().req("user").obj().req("isAdmin").text())
+
+        val newParentLogin = login(createdParentInvite, "desktop").json()
+        assertEquals("Olga", newParentLogin.data().req("user").obj().req("displayName").text())
+        assertEquals("true", newParentLogin.data().req("user").obj().req("isAdmin").text())
+
+        val afterRegistration = authorizedPost(
+            path = "/api/admin/verify",
+            token = parentToken,
+            body = """{"masterPassword":"super-secret-pass"}""",
+        ).json()
+        val createdChildRow = afterRegistration.data().req("members").arr()
+            .firstOrNull { it.jsonObject.req("inviteCode").text() == childInvite }
+        assertNotNull(createdChildRow)
+        assertEquals("true", createdChildRow!!.jsonObject.req("isRegistered").text())
+        val createdParentRow = afterRegistration.data().req("members").arr()
+            .firstOrNull { it.jsonObject.req("inviteCode").text() == createdParentInvite }
+        assertNotNull(createdParentRow)
+        assertEquals("true", createdParentRow!!.jsonObject.req("isRegistered").text())
+        assertEquals("true", createdParentRow.jsonObject.req("isAdmin").text())
+
+        val remove = authorizedPost(
+            path = "/api/admin/members/remove",
+            token = parentToken,
+            body = """{"masterPassword":"super-secret-pass","inviteCode":"$childInvite"}""",
+        )
+        assertEquals(HttpStatusCode.OK, remove.status)
+        val removeBody = remove.json()
+        assertTrue(removeBody.success())
+        val removedChildRow = removeBody.data().req("members").arr()
+            .first { it.jsonObject.req("inviteCode").text() == childInvite }
+        assertEquals("false", removedChildRow.jsonObject.req("isActive").text())
+
+        val removedLogin = login(childInvite, "android")
+        assertEquals(HttpStatusCode.Unauthorized, removedLogin.status)
+        assertEquals(ErrorCode.UNAUTHORIZED.name, removedLogin.json().errorCode())
+    }
+
+    @Test
+    fun childCannotAccessAdministrationRoutes() = backendTestApp {
+        val childAuth = login(
+            inviteCode = "CHILD-DEMO",
+            platform = "desktop",
+        ).json()
+
+        val response = authorizedPost(
+            path = "/api/admin/verify",
+            token = childAuth.token(),
+            body = """{"masterPassword":"super-secret-pass"}""",
+        )
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        val body = response.json()
+        assertFalse(body.success())
+        assertEquals(ErrorCode.FORBIDDEN.name, body.errorCode())
     }
 
     @Test
@@ -611,36 +861,48 @@ class BackendIntegrationTest {
     }
 }
 
+private val backendTestLock = Any()
+private var currentTestJdbcUrl: String? = null
+
 private fun backendTestApp(
     authRateLimitMaxRequests: Int = 10,
     authRateLimitWindowSeconds: Int = 60,
+    seedOnStart: Boolean = true,
     block: suspend ApplicationTestBuilder.() -> Unit,
-) = testApplication {
-    val jdbcUrl = testJdbcUrl()
-    resetTestDatabase(jdbcUrl)
+) = synchronized(backendTestLock) {
+    testApplication {
+        val jdbcUrl = testJdbcUrl()
+        currentTestJdbcUrl = jdbcUrl
+        resetTestDatabase(jdbcUrl)
 
-    environment {
-        config = MapApplicationConfig(
-            "app.name" to "family-messenger-backend-test",
-            "app.version" to "test",
-            "app.database.jdbcUrl" to jdbcUrl,
-            "app.database.user" to "sa",
-            "app.database.password" to "",
-            "app.database.driver" to "org.h2.Driver",
-            "app.database.bootstrapSchema" to "true",
-            "app.database.seedOnStart" to "true",
-            "app.auth.tokenTtlHours" to "720",
-            "app.rateLimit.enabled" to "true",
-            "app.rateLimit.authWindowSeconds" to authRateLimitWindowSeconds.toString(),
-            "app.rateLimit.authMaxRequestsPerWindow" to authRateLimitMaxRequests.toString(),
-        )
+        environment {
+            config = MapApplicationConfig(
+                "app.name" to "family-messenger-backend-test",
+                "app.version" to "test",
+                "app.database.jdbcUrl" to jdbcUrl,
+                "app.database.user" to "sa",
+                "app.database.password" to "",
+                "app.database.driver" to "org.h2.Driver",
+                "app.database.bootstrapSchema" to "true",
+                "app.database.seedOnStart" to seedOnStart.toString(),
+                "app.auth.tokenTtlHours" to "720",
+                "app.rateLimit.enabled" to "true",
+                "app.rateLimit.authWindowSeconds" to authRateLimitWindowSeconds.toString(),
+                "app.rateLimit.authMaxRequestsPerWindow" to authRateLimitMaxRequests.toString(),
+            )
+        }
+
+        application {
+            module()
+        }
+
+        block()
     }
+}
 
-    application {
-        module()
-    }
-
-    block()
+private suspend fun ApplicationTestBuilder.bootstrap(body: String): HttpResponse = client.post("/api/setup/bootstrap") {
+    contentType(ContentType.Application.Json)
+    setBody(body)
 }
 
 private suspend fun ApplicationTestBuilder.login(
@@ -695,14 +957,14 @@ private fun kotlinx.serialization.json.JsonElement.text(): String = this.jsonPri
 private fun kotlinx.serialization.json.JsonElement.long(): Long = this.jsonPrimitive.content.toLong()
 
 private fun testJdbcUrl(): String =
-    "jdbc:h2:mem:backend-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE"
+    "jdbc:h2:file:${Files.createTempDirectory("family-messenger-backend-test-${UUID.randomUUID()}").resolve("db").toAbsolutePath()};MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE"
 
 private fun insertInvite(
     code: String,
     displayName: String,
     role: String,
     familyName: String = "Demo Family",
-    jdbcUrl: String = testJdbcUrl(),
+    jdbcUrl: String = checkNotNull(currentTestJdbcUrl) { "No active test JDBC URL" },
 ) {
     DriverManager.getConnection(jdbcUrl, "sa", "").use { connection ->
         val familyId =

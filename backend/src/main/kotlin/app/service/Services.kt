@@ -2,16 +2,23 @@ package app.service
 
 import app.config.AuthConfig
 import app.config.RateLimitConfig
+import app.error.ForbiddenException
 import app.error.RateLimitedException
 import app.error.UnauthorizedException
 import app.error.ValidationException
 import app.model.SessionPrincipal
+import app.repository.AdminRepository
 import app.repository.AuthRepository
 import app.repository.DeviceRepository
 import app.repository.MessageRepository
 import app.repository.PresenceRepository
 import app.repository.ProfileRepository
+import app.repository.SetupRepository
 import com.familymessenger.contract.AckResponse
+import com.familymessenger.contract.AdminCreateMemberRequest
+import com.familymessenger.contract.AdminCreateMemberResponse
+import com.familymessenger.contract.AdminMembersResponse
+import com.familymessenger.contract.AdminRemoveMemberRequest
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactsResponse
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
@@ -24,8 +31,13 @@ import com.familymessenger.contract.ProfileResponse
 import com.familymessenger.contract.SendMessageRequest
 import com.familymessenger.contract.SendMessageResponse
 import com.familymessenger.contract.ShareLocationRequest
+import com.familymessenger.contract.SetupBootstrapRequest
+import com.familymessenger.contract.SetupBootstrapResponse
+import com.familymessenger.contract.SetupStatusResponse
 import com.familymessenger.contract.SyncPayload
 import com.familymessenger.contract.UpdatePushTokenRequest
+import com.familymessenger.contract.VerifyAdminAccessRequest
+import com.familymessenger.contract.UserRole
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.plus
@@ -35,6 +47,7 @@ import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
+import org.mindrot.jbcrypt.BCrypt
 
 class AuthService(
     private val repository: AuthRepository,
@@ -140,6 +153,61 @@ class DeviceService(
     }
 }
 
+class SetupService(
+    private val repository: SetupRepository,
+) {
+    suspend fun status(): SetupStatusResponse = repository.status()
+
+    suspend fun bootstrap(request: SetupBootstrapRequest): SetupBootstrapResponse {
+        validateMasterPassword(request.masterPassword)
+        validateFamilyName(request.familyName)
+        validateSetupMembers(request.members)
+        val passwordHash = BCrypt.hashpw(request.masterPassword, BCrypt.gensalt(12))
+        return repository.bootstrap(
+            masterPasswordHash = passwordHash,
+            familyName = request.familyName.trim(),
+            members = request.members.map { it.copy(displayName = it.displayName.trim()) },
+            now = Clock.System.now(),
+        )
+    }
+}
+
+class AdminService(
+    private val repository: AdminRepository,
+) {
+    suspend fun verifyAccess(principal: SessionPrincipal, request: VerifyAdminAccessRequest): AdminMembersResponse {
+        validateAdminPrincipal(principal)
+        validateMasterPassword(request.masterPassword)
+        verifyMasterPassword(principal.familyId, request.masterPassword)
+        return repository.listMembers(principal)
+    }
+
+    suspend fun createMember(principal: SessionPrincipal, request: AdminCreateMemberRequest): AdminCreateMemberResponse {
+        validateAdminPrincipal(principal)
+        validateMasterPassword(request.masterPassword)
+        verifyMasterPassword(principal.familyId, request.masterPassword)
+        validateMemberDraft(request.displayName, request.role, request.isAdmin)
+        return repository.createMember(principal, request.displayName.trim(), request.role.name, request.isAdmin, Clock.System.now())
+    }
+
+    suspend fun removeMember(principal: SessionPrincipal, request: AdminRemoveMemberRequest): AdminMembersResponse {
+        validateAdminPrincipal(principal)
+        validateMasterPassword(request.masterPassword)
+        verifyMasterPassword(principal.familyId, request.masterPassword)
+        if (request.inviteCode.isBlank()) {
+            throw ValidationException("inviteCode is required")
+        }
+        return repository.removeMember(principal, request.inviteCode, Clock.System.now())
+    }
+
+    private suspend fun verifyMasterPassword(familyId: Long, masterPassword: String) {
+        val hash = repository.masterPasswordHash(familyId) ?: throw ForbiddenException("Master password is not configured")
+        if (!BCrypt.checkpw(masterPassword, hash)) {
+            throw ForbiddenException("Invalid master password")
+        }
+    }
+}
+
 class TokenService(
     private val config: AuthConfig,
 ) {
@@ -193,6 +261,64 @@ class RateLimitService(
 private fun validateInviteCode(inviteCode: String) {
     if (inviteCode.isBlank() || inviteCode.length > 64) {
         throw ValidationException("inviteCode must be between 1 and 64 characters")
+    }
+}
+
+private fun validateMasterPassword(masterPassword: String) {
+    if (masterPassword.length < 8 || masterPassword.length > 256) {
+        throw ValidationException("masterPassword must be between 8 and 256 characters")
+    }
+}
+
+private fun validateFamilyName(familyName: String) {
+    val normalized = familyName.trim()
+    if (normalized.isBlank() || normalized.length > 120) {
+        throw ValidationException("familyName must be between 1 and 120 characters")
+    }
+}
+
+private fun validateSetupMembers(members: List<com.familymessenger.contract.SetupMemberDraft>) {
+    if (members.isEmpty() || members.size > 20) {
+        throw ValidationException("members must contain between 1 and 20 entries")
+    }
+    if (members.any { it.role == UserRole.FAMILY }) {
+        throw ValidationException("members cannot use family role")
+    }
+    if (members.none { it.role == UserRole.PARENT }) {
+        throw ValidationException("At least one parent is required")
+    }
+    if (members.any { it.isAdmin && it.role != UserRole.PARENT }) {
+        throw ValidationException("Administrator flag is allowed only for parents")
+    }
+    if (members.none { it.role == UserRole.PARENT && it.isAdmin }) {
+        throw ValidationException("At least one parent administrator is required")
+    }
+
+    val names = members.map { it.displayName.trim() }
+    if (names.any { it.isBlank() || it.length > 120 }) {
+        throw ValidationException("Each member displayName must be between 1 and 120 characters")
+    }
+    if (names.map { it.lowercase() }.distinct().size != names.size) {
+        throw ValidationException("Member displayName values must be unique")
+    }
+}
+
+private fun validateAdminPrincipal(principal: SessionPrincipal) {
+    if (!principal.isAdmin) {
+        throw ForbiddenException("Administrator access required")
+    }
+}
+
+private fun validateMemberDraft(displayName: String, role: UserRole, isAdmin: Boolean) {
+    val normalized = displayName.trim()
+    if (normalized.isBlank() || normalized.length > 120) {
+        throw ValidationException("displayName must be between 1 and 120 characters")
+    }
+    if (role == UserRole.FAMILY) {
+        throw ValidationException("role must be parent or child")
+    }
+    if (isAdmin && role != UserRole.PARENT) {
+        throw ValidationException("Administrator flag is allowed only for parents")
     }
 }
 

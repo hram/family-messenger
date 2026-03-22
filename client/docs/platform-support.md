@@ -9,7 +9,8 @@
 
 ## What Works on Every Platform
 
-- onboarding screen с register/login flow
+- onboarding screen с invite-code login flow
+- web first-run setup wizard для пустой системы
 - contacts screen с загрузкой и локальным кэшем
 - chat screen с text messages, quick actions и mark read
 - settings screen с base URL и polling settings
