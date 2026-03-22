@@ -49,3 +49,33 @@ Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.
 - целевой артефакт для VPS: `family-messenger-backend-all.jar`, опубликованный в GitHub Releases
 
 Это ограничение появилось из практического опыта: source-build на VPS делает deploy медленным и хрупким и завязывает запуск на внешние registry и их rate limits.
+
+## One-Command VPS Install
+
+Целевой путь для обычного пользователя теперь такой:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install.sh | bash
+```
+
+Скрипт:
+
+- ставит Docker и Java runtime
+- поднимает Postgres
+- скачивает готовый `family-messenger-backend-all.jar` из GitHub Releases
+- создаёт `systemd` service
+- печатает итоговый URL вида `http://<server-ip>:8080`
+
+Обновление:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/update.sh | bash
+```
+
+Удаление:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall.sh | bash
+```
+
+Подробности и ручной fallback описаны в [infra/README.md](infra/README.md).

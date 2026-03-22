@@ -5,6 +5,50 @@
 - локальная разработка через `Docker Compose`
 - VPS deploy на Ubuntu 24.04 без backend build на сервере
 
+## Быстрый путь для обычного VPS
+
+Если цель проста: купить Ubuntu VPS и получить свой семейный мессенджер одной командой, используй именно этот путь:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install.sh | bash
+```
+
+Что делает скрипт:
+
+- ставит Docker Engine и Compose plugin
+- ставит `openjdk-17-jre-headless`
+- скачивает `family-messenger-backend-all.jar` из GitHub Releases
+- поднимает Postgres в Docker
+- создаёт backend service через `systemd`
+- открывает итоговый URL вида `http://<server-ip>:8080`
+
+После завершения:
+
+- открой в браузере `http://<server-ip>:8080`
+- пройди setup wizard
+- задай master password
+- добавь родителей и детей
+
+Обновление:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/update.sh | bash
+```
+
+Удаление:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall.sh | bash
+```
+
+Если нужно поставить конкретную версию release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install.sh | RELEASE_VERSION=v0.1.0 bash
+```
+
+Всё остальное ниже нужно только если хочется понять, что именно делает установщик, или если нужен ручной fallback.
+
 Критичное ограничение для VPS deploy:
 
 - VPS не должен собирать backend из исходников

@@ -26,6 +26,7 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
 - backend доступен извне
 - Postgres жив
 - клиент может подключиться
+- one-command installer реально работает на чистом Ubuntu VPS
 - не собирать backend на VPS из исходников
 - не заставлять сервер тянуть Gradle и base images во время deploy
 - выкатывать только готовый `family-messenger-backend-all.jar` из GitHub Releases
