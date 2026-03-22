@@ -48,6 +48,12 @@ need_cmd curl
 need_cmd awk
 need_cmd sed
 
+read_existing_db_password() {
+  if [[ -f "${CONFIG_ROOT}/backend.env" ]]; then
+    sed -n 's/^DB_PASSWORD=//p' "${CONFIG_ROOT}/backend.env" | head -n1
+  fi
+}
+
 detect_release_version() {
   if [[ -n "${RELEASE_VERSION}" ]]; then
     printf '%s\n' "${RELEASE_VERSION}"
@@ -324,7 +330,10 @@ main() {
 
   version="$(detect_release_version)"
   public_ip="$(detect_public_ip)"
-  db_password="${DB_PASSWORD:-$(generate_password)}"
+  db_password="${DB_PASSWORD:-$(read_existing_db_password)}"
+  if [[ -z "${db_password}" ]]; then
+    db_password="$(generate_password)"
+  fi
 
   log "Installing Family Messenger ${version}"
   install_docker
