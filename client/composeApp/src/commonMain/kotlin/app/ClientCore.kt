@@ -585,6 +585,7 @@ class ClientDiagnosticsRepository(
     private val sessionStore: SessionStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val flushMutex = Mutex()
 
     fun record(level: ClientLogLevel, tag: String, message: String, details: String?) {
         scope.launch {
@@ -599,30 +600,31 @@ class ClientDiagnosticsRepository(
                 )
                 snapshot.copy(pendingClientLogs = updated.takeLast(400))
             }
-            runCatching { flush() }
         }
     }
 
     suspend fun flush() {
-        if (sessionStore.currentSession() == null) return
-        while (true) {
-            val batch = localDatabase.snapshot().pendingClientLogs.take(50)
-            if (batch.isEmpty()) return
-            apiClient.sendClientLogs(
-                batch.map {
-                    ClientLogEntry(
-                        eventId = it.eventId,
-                        level = it.level,
-                        tag = it.tag,
-                        message = it.message,
-                        details = it.details,
-                        occurredAt = it.occurredAt,
-                    )
-                },
-            )
-            val sentIds = batch.map { it.eventId }.toSet()
-            localDatabase.update { snapshot ->
-                snapshot.copy(pendingClientLogs = snapshot.pendingClientLogs.filterNot { it.eventId in sentIds })
+        flushMutex.withLock {
+            if (sessionStore.currentSession() == null) return
+            while (true) {
+                val batch = localDatabase.snapshot().pendingClientLogs.take(50)
+                if (batch.isEmpty()) return
+                apiClient.sendClientLogs(
+                    batch.map {
+                        ClientLogEntry(
+                            eventId = it.eventId,
+                            level = it.level,
+                            tag = it.tag,
+                            message = it.message,
+                            details = it.details,
+                            occurredAt = it.occurredAt,
+                        )
+                    },
+                )
+                val sentIds = batch.map { it.eventId }.toSet()
+                localDatabase.update { snapshot ->
+                    snapshot.copy(pendingClientLogs = snapshot.pendingClientLogs.filterNot { it.eventId in sentIds })
+                }
             }
         }
     }
@@ -655,6 +657,9 @@ class MessagesRepository(
     private val localDatabase: LocalDatabase,
     private val sessionStore: SessionStore,
 ) {
+    private val readInFlightMutex = Mutex()
+    private val readInFlight = mutableSetOf<Long>()
+
     suspend fun conversation(contactId: Long): List<MessagePayload> {
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return emptyList()
         return localDatabase.snapshot().messages
@@ -735,35 +740,56 @@ class MessagesRepository(
     }
 
     suspend fun markConversationRead(contactId: Long) {
-        val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return
-        val snapshot = localDatabase.snapshot()
-        val incomingMessages = snapshot.messages
-            .map { it.payload }
-            .filter {
-                if (contactId == FAMILY_GROUP_CHAT_ID) {
-                    it.senderUserId != currentUserId && it.recipientUserId == FAMILY_GROUP_CHAT_ID
-                } else {
-                    it.senderUserId == contactId && it.recipientUserId == currentUserId
+        if (!startRead(contactId)) return
+        try {
+            val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return
+            val snapshot = localDatabase.snapshot()
+            val incomingMessages = snapshot.messages
+                .map { it.payload }
+                .filter {
+                    if (contactId == FAMILY_GROUP_CHAT_ID) {
+                        it.senderUserId != currentUserId && it.recipientUserId == FAMILY_GROUP_CHAT_ID
+                    } else {
+                        it.senderUserId == contactId && it.recipientUserId == currentUserId
+                    }
                 }
+            val messageIds = incomingMessages
+                .mapNotNull { it.id }
+                .take(200)
+            clientDiagnosticsInfo(
+                LOG_TAG_UNREAD,
+                "markConversationRead contactId=$contactId currentUserId=$currentUserId incoming=${incomingMessages.size} ids=$messageIds",
+            )
+            if (messageIds.isNotEmpty()) {
+                apiClient.markRead(messageIds)
             }
-        val messageIds = incomingMessages
-            .mapNotNull { it.id }
-            .take(200)
-        clientDiagnosticsInfo(
-            LOG_TAG_UNREAD,
-            "markConversationRead contactId=$contactId currentUserId=$currentUserId incoming=${incomingMessages.size} ids=$messageIds",
-        )
-        if (messageIds.isNotEmpty()) {
-            apiClient.markRead(messageIds)
+            val lastReadAt = incomingMessages.maxOfOrNull { it.createdAt ?: Clock.System.now() } ?: Clock.System.now()
+            clientDiagnosticsInfo(
+                LOG_TAG_UNREAD,
+                "markConversationRead apply contactId=$contactId lastReadAt=$lastReadAt",
+            )
+            localDatabase.update { snapshot ->
+                snapshot.copy(messages = snapshot.messages.advanceStatuses(messageIds, MessageStatus.READ))
+                    .copy(lastReadAtByChat = snapshot.lastReadAtByChat + (contactId to lastReadAt))
+            }
+        } finally {
+            finishRead(contactId)
         }
-        val lastReadAt = incomingMessages.maxOfOrNull { it.createdAt ?: Clock.System.now() } ?: Clock.System.now()
-        clientDiagnosticsInfo(
-            LOG_TAG_UNREAD,
-            "markConversationRead apply contactId=$contactId lastReadAt=$lastReadAt",
-        )
-        localDatabase.update { snapshot ->
-            snapshot.copy(messages = snapshot.messages.advanceStatuses(messageIds, MessageStatus.READ))
-                .copy(lastReadAtByChat = snapshot.lastReadAtByChat + (contactId to lastReadAt))
+    }
+
+    private suspend fun startRead(contactId: Long): Boolean =
+        readInFlightMutex.withLock {
+            if (contactId in readInFlight) {
+                false
+            } else {
+                readInFlight += contactId
+                true
+            }
+        }
+
+    private suspend fun finishRead(contactId: Long) {
+        readInFlightMutex.withLock {
+            readInFlight -= contactId
         }
     }
 

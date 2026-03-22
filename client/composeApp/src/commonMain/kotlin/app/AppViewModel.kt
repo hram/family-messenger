@@ -3,6 +3,7 @@ package app
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.MessagePayload
+import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
 import com.familymessenger.contract.UserRole
@@ -66,16 +67,7 @@ class AppViewModel(
                     snapshot.messages
                         .map { it.payload }
                         .filter { it.senderUserId != currentUserId }
-                        .filter { payload ->
-                            val chatId = if (payload.recipientUserId == FAMILY_GROUP_CHAT_ID) {
-                                FAMILY_GROUP_CHAT_ID
-                            } else {
-                                payload.senderUserId
-                            }
-                            val lastReadAt = snapshot.lastReadAtByChat[chatId]
-                            val createdAt = payload.createdAt
-                            lastReadAt == null || createdAt == null || createdAt > lastReadAt
-                        }
+                        .filter { it.status != MessageStatus.READ }
                         .groupingBy {
                             if (it.recipientUserId == FAMILY_GROUP_CHAT_ID) FAMILY_GROUP_CHAT_ID else it.senderUserId
                         }
@@ -339,18 +331,21 @@ class AppViewModel(
     }
 
     fun openChat(contact: ContactSummary) {
+        mutableState.value = mutableState.value.copy(
+            screen = Screen.CHAT,
+            selectedContactId = contact.user.id,
+            selectedContactName = contact.user.displayName,
+            draftMessage = "",
+        )
         scope.launch {
             val messages = messagesRepository.conversation(contact.user.id)
             mutableState.value = mutableState.value.copy(
-                screen = Screen.CHAT,
-                selectedContactId = contact.user.id,
-                selectedContactName = contact.user.displayName,
                 messages = messages,
-                draftMessage = "",
             )
-            runCatching { messagesRepository.markConversationDelivered(contact.user.id) }
-            runCatching { messagesRepository.markConversationRead(contact.user.id) }
-            refreshCurrentConversation()
+            scope.launch {
+                runCatching { messagesRepository.markConversationDelivered(contact.user.id) }
+                runCatching { messagesRepository.markConversationRead(contact.user.id) }
+            }
         }
     }
 

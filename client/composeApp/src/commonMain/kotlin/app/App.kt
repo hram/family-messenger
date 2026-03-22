@@ -657,7 +657,7 @@ private fun ContactsPanel(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize().background(SidebarBg)) {
-            items(contacts) { contact ->
+            items(items = contacts, key = { it.user.id }) { contact ->
                 ContactRow(
                     contact = contact,
                     unreadCount = unreadCounts[contact.user.id] ?: 0,
@@ -876,7 +876,7 @@ private fun MessageBubble(
                 if (showSenderName && !mine && !senderName.isNullOrBlank()) {
                     Text(
                         senderName,
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = senderNameColor(senderName),
                         modifier = Modifier.padding(bottom = 4.dp),
@@ -885,9 +885,9 @@ private fun MessageBubble(
                 when (message.type) {
                     MessageType.TEXT -> Text(
                         message.body.orEmpty(),
-                        fontSize = 15.sp,
+                        fontSize = 18.sp,
                         color = TextPrimary,
-                        lineHeight = 20.sp,
+                        lineHeight = 24.sp,
                     )
                     MessageType.QUICK_ACTION -> Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -904,7 +904,7 @@ private fun MessageBubble(
                         }
                         Text(
                             message.quickActionCode?.name ?: "",
-                            fontSize = 14.sp,
+                            fontSize = 17.sp,
                             color = TextPrimary,
                         )
                     }
@@ -921,7 +921,7 @@ private fun MessageBubble(
                         }
                         Text(
                             message.location?.label ?: "My location",
-                            fontSize = 13.sp,
+                            fontSize = 16.sp,
                             color = TextPrimary,
                         )
                     }
@@ -933,7 +933,7 @@ private fun MessageBubble(
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(message.status.prettyLabel(), fontSize = 11.sp, color = TextSecondary)
+                    Text(message.status.prettyLabel(), fontSize = 12.sp, color = TextSecondary)
                     if (mine) {
                         Icon(
                             imageVector = if (message.status == MessageStatus.READ) AppIcons.DoubleCheck else AppIcons.Check,

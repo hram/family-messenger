@@ -109,9 +109,14 @@ class ExposedAuthRepository : AuthRepository {
         val userId = row[AuthTokensTable.userId]
         val deviceId = row[AuthTokensTable.deviceId]
         val familyId = row[AuthTokensTable.familyId]
+        val shouldTouchToken = row[AuthTokensTable.lastUsedAt]?.let {
+            now.toEpochMilliseconds() - it.toEpochMilliseconds() >= 60_000
+        } ?: true
 
-        AuthTokensTable.update({ AuthTokensTable.id eq tokenId }) {
-            it[lastUsedAt] = now
+        if (shouldTouchToken) {
+            AuthTokensTable.update({ AuthTokensTable.id eq tokenId }) {
+                it[lastUsedAt] = now
+            }
         }
         DevicesTable.update({ DevicesTable.id eq deviceId }) {
             it[lastSeenAt] = now

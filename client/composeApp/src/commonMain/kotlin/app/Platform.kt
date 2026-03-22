@@ -46,7 +46,6 @@ expect fun platformLogInfo(tag: String, message: String)
 expect fun platformLogError(tag: String, message: String, throwable: Throwable? = null)
 
 object ClientDiagnosticsBridge {
-    @Volatile
     private var sink: ((ClientLogLevel, String, String, String?) -> Unit)? = null
 
     fun install(sink: (ClientLogLevel, String, String, String?) -> Unit) {
