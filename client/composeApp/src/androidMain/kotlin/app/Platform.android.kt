@@ -42,7 +42,7 @@ actual fun createPlatformServices(): PlatformServices {
         platformInfo = PlatformInfo(
             type = PlatformType.ANDROID,
             displayName = "Android",
-            defaultBaseUrl = "http://10.0.2.2:8081",
+            defaultBaseUrl = "http://82.97.243.127:8080",
         ),
         httpClient = HttpClient(OkHttp),
         settingsStore = AndroidStore(context.getSharedPreferences("family-messenger-settings", Context.MODE_PRIVATE)),

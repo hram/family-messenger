@@ -40,6 +40,7 @@ The practical next steps after the current implementation pass are tracked in [T
 Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
 
 Для самой простой пользовательской инструкции смотри [DEPLOY_FOR_FAMILY.md](DEPLOY_FOR_FAMILY.md).
+Для подробной пошаговой инструкции смотри [DEPLOY_STEP_BY_STEP_FOR_FAMILY.md](DEPLOY_STEP_BY_STEP_FOR_FAMILY.md).
 
 ## Deployment Rule
 
