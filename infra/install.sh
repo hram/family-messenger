@@ -357,7 +357,8 @@ main() {
 
   log "Starting backend service"
   ${SUDO} systemctl daemon-reload
-  ${SUDO} systemctl enable --now "${SYSTEMD_UNIT_NAME}"
+  ${SUDO} systemctl enable "${SYSTEMD_UNIT_NAME}"
+  ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
   ${SUDO} nginx -t
   ${SUDO} systemctl restart nginx
   maybe_open_ufw
