@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Family Messenger** is a self-hosted family messaging app built with Kotlin Multiplatform. It's a monorepo containing a Ktor backend, Compose Multiplatform client (Android, iOS, Desktop, Web/WASM), and a shared API contract module.
+**Family Messenger** is a self-hosted family messaging app built with Kotlin Multiplatform. It's a monorepo containing a Ktor backend, Compose Multiplatform client (Android, iOS, Desktop, Web/JS), and a shared API contract module.
 
 ## Build & Run Commands
 
@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 ./gradlew :client:composeApp:compileKotlinAndroid   # Compile for Android
 ./gradlew :client:composeApp:compileKotlinDesktop   # Compile for Desktop
-./gradlew :client:composeApp:compileKotlinWasmJs    # Compile for Web/WASM
+./gradlew :client:composeApp:compileKotlinJs        # Compile for Web/JS
 ./gradlew :client:composeApp:installDebug           # Install Android debug APK
 ./gradlew :client:composeApp:desktopRun             # Run desktop client
 ```

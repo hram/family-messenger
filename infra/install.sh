@@ -8,6 +8,7 @@ CONFIG_ROOT="${CONFIG_ROOT:-/etc/family-messenger}"
 SYSTEMD_UNIT_NAME="${SYSTEMD_UNIT_NAME:-family-messenger-backend}"
 APP_USER="${APP_USER:-family}"
 APP_GROUP="${APP_GROUP:-family}"
+PUBLIC_PORT="${PUBLIC_PORT:-8080}"
 BACKEND_PORT="${BACKEND_PORT:-8081}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-family_messenger}"
@@ -22,7 +23,6 @@ POSTGRES_IMAGE="${POSTGRES_IMAGE:-mirror.gcr.io/library/postgres:16-alpine}"
 POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
-PUBLIC_HOST="${PUBLIC_HOST:-}"
 
 log() {
   printf '[family-messenger] %s\n' "$*"
@@ -67,15 +67,6 @@ detect_public_ip() {
     ip="$(ip route get 1.1.1.1 2>/dev/null | awk '/src/ {for (i=1; i<=NF; i++) if ($i == "src") { print $(i+1); exit }}')"
   fi
   printf '%s\n' "${ip:-localhost}"
-}
-
-detect_public_host() {
-  local public_ip="$1"
-  if [[ -n "${PUBLIC_HOST}" ]]; then
-    printf '%s\n' "${PUBLIC_HOST}"
-    return
-  fi
-  printf '%s.sslip.io\n' "${public_ip//./-}"
 }
 
 install_docker() {
@@ -241,14 +232,8 @@ EOF
 }
 
 write_caddy_config() {
-  local public_host="$1"
   cat <<EOF | ${SUDO} tee /etc/caddy/Caddyfile >/dev/null
-${public_host} {
-    header {
-        Cross-Origin-Opener-Policy same-origin
-        Cross-Origin-Embedder-Policy require-corp
-    }
-
+:${PUBLIC_PORT} {
     handle /api/* {
         reverse_proxy 127.0.0.1:${BACKEND_PORT}
     }
@@ -273,7 +258,6 @@ EOF
 write_install_state() {
   local version="$1"
   local public_ip="$2"
-  local public_host="$3"
   cat <<EOF | ${SUDO} tee "${CONFIG_ROOT}/install.env" >/dev/null
 RELEASE_VERSION=${version}
 REPO_OWNER=${REPO_OWNER}
@@ -283,6 +267,7 @@ CONFIG_ROOT=${CONFIG_ROOT}
 SYSTEMD_UNIT_NAME=${SYSTEMD_UNIT_NAME}
 APP_USER=${APP_USER}
 APP_GROUP=${APP_GROUP}
+PUBLIC_PORT=${PUBLIC_PORT}
 BACKEND_PORT=${BACKEND_PORT}
 DB_PORT=${DB_PORT}
 DB_NAME=${DB_NAME}
@@ -292,8 +277,7 @@ POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
 WEB_ASSET_NAME=${WEB_ASSET_NAME}
 PUBLIC_IP=${public_ip}
-PUBLIC_HOST=${public_host}
-APP_BASE_URL=https://${public_host}
+APP_BASE_URL=http://${public_ip}:${PUBLIC_PORT}
 EOF
   ${SUDO} chmod 0600 "${CONFIG_ROOT}/install.env"
 }
@@ -328,21 +312,18 @@ maybe_open_ufw() {
   local status
   status="$(${SUDO} ufw status 2>/dev/null | head -n1 || true)"
   if [[ "${status}" == "Status: active" ]]; then
-    log "Opening TCP ports 80 and 443 in UFW"
-    ${SUDO} ufw allow 80/tcp >/dev/null
-    ${SUDO} ufw allow 443/tcp >/dev/null
+    log "Opening TCP port ${PUBLIC_PORT} in UFW"
+    ${SUDO} ufw allow "${PUBLIC_PORT}/tcp" >/dev/null
   fi
 }
 
 main() {
   local version
   local public_ip
-  local public_host
   local db_password
 
   version="$(detect_release_version)"
   public_ip="$(detect_public_ip)"
-  public_host="$(detect_public_host "${public_ip}")"
   db_password="${DB_PASSWORD:-$(generate_password)}"
 
   log "Installing Family Messenger ${version}"
@@ -354,7 +335,7 @@ main() {
   write_postgres_compose "${db_password}"
   write_backend_env "${db_password}"
   write_systemd_unit
-  write_caddy_config "${public_host}"
+  write_caddy_config
   download_jar "${version}"
   download_web "${version}"
 
@@ -369,12 +350,12 @@ main() {
   ${SUDO} caddy validate --config /etc/caddy/Caddyfile
   ${SUDO} systemctl restart caddy
   maybe_open_ufw
-  write_install_state "${version}" "${public_ip}" "${public_host}"
+  write_install_state "${version}" "${public_ip}"
 
   log "Installation complete"
   printf '\n'
-  printf 'Open in browser: https://%s\n' "${public_host}"
-  printf 'Backend health:   https://%s/api/health\n' "${public_host}"
+  printf 'Open in browser: http://%s:%s\n' "${public_ip}" "${PUBLIC_PORT}"
+  printf 'Backend health:   http://%s:%s/api/health\n' "${public_ip}" "${PUBLIC_PORT}"
   printf '\n'
   printf 'Saved files:\n'
   printf '  - %s/backend.env\n' "${CONFIG_ROOT}"

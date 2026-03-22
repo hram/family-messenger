@@ -5,7 +5,7 @@ Family Messenger is a Kotlin monorepo for a self-hosted family messaging MVP. Th
 ## Repository Layout
 
 - `backend/`: Ktor backend with auth, validation, persistence, sync, SQL artifacts, and docs
-- `client/composeApp/`: Compose Multiplatform client for Android, iOS, Desktop, and Web WASM
+- `client/composeApp/`: Compose Multiplatform client for Android, iOS, Desktop, and Web JS
 - `client/docs/`: client architecture notes
 - `shared-contract/`: shared Kotlin Multiplatform DTO and API contract module
 - `infra/`: Docker Compose deployment layer for local runs and Ubuntu 24.04 VPS
@@ -26,7 +26,7 @@ The backend now includes:
 - centralized JSON error handling
 - schema bootstrap and demo seed support
 
-The client is now implemented as a Kotlin Multiplatform Compose app with shared Ktor/Koin client logic, local persistence, auth/session handling, polling sync, and platform entrypoints for Android, iOS, Desktop, and Web WASM.
+The client is now implemented as a Kotlin Multiplatform Compose app with shared Ktor/Koin client logic, local persistence, auth/session handling, polling sync, and platform entrypoints for Android, iOS, Desktop, and Web JS.
 
 ## Next Planned Layers
 
@@ -67,8 +67,8 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 - скачивает готовый `family-messenger-backend-all.jar` из GitHub Releases
 - скачивает готовый production web bundle из GitHub Releases
 - создаёт `systemd` service
-- публикует сайт по HTTPS на адресе вида `https://<server-ip-as-dashes>.sslip.io`
-- печатает итоговый URL вида `https://<server-ip-as-dashes>.sslip.io`
+- публикует сайт по адресу вида `http://<server-ip>:8080`
+- печатает итоговый URL вида `http://<server-ip>:8080`
 
 Обновление:
 

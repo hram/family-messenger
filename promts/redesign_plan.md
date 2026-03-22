@@ -230,9 +230,9 @@ Row(
 | Android   | Мобильная навигация (Contacts → Chat → Settings) |
 | iOS       | То же |
 | Desktop   | Wide split-pane автоматически (окно > 600dp) |
-| Web/WASM  | Wide split-pane в браузере, мобильная если узкое окно |
+| Web/JS    | Wide split-pane в браузере, мобильная если узкое окно |
 
-Тестировать: `:client:composeApp:desktopRun` и `:client:composeApp:compileKotlinWasmJs`
+Тестировать: `:client:composeApp:desktopRun` и `:client:composeApp:compileKotlinJs`
 
 ---
 

@@ -48,7 +48,7 @@
 - integration of shared-contract
 
 5. Создать skeleton client KMP:
-- targets: Android, iOS, Desktop, Web WASM
+- targets: Android, iOS, Desktop, Web JS
 - shared client modules
 - базовая wiring-структура
 - entrypoints для платформ

@@ -5,7 +5,7 @@
 - Android: `AndroidMainActivity` и shared Compose UI
 - iOS: `MainViewController()` и shared Compose UI
 - Desktop: `desktopMain` и запускаемое JVM-приложение
-- Web WASM: `ComposeViewport` и shared Compose UI в браузере
+- Web JS: `CanvasBasedWindow` и shared Compose UI в браузере
 
 ## What Works on Every Platform
 
@@ -22,7 +22,7 @@
 ## Verified Build Status
 
 - Desktop: `:client:composeApp:compileKotlinDesktop` проходит
-- Web WASM: `:client:composeApp:compileKotlinWasmJs` проходит
+- Web JS: `:client:composeApp:compileKotlinJs` проходит
 - Android: `:client:composeApp:compileDebugKotlinAndroid` проходит
 - iOS: shared code и `iosMain` wired, но сборка не прогонялась в этом окружении, потому что iOS targets здесь отключены локальной машиной
 

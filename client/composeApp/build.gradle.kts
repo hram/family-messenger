@@ -15,7 +15,7 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
-    wasmJs {
+    js {
         browser()
         binaries.executable()
     }
@@ -24,7 +24,7 @@ kotlin {
         val androidMain by getting
         val desktopMain by getting
         val desktopTest by getting
-        val wasmJsMain by getting
+        val jsMain by getting
         val iosX64Main by getting
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting
@@ -70,7 +70,8 @@ kotlin {
             implementation(libs.ktor.server.netty)
             implementation("com.h2database:h2:2.3.232")
         }
-        wasmJsMain.dependencies {
+        jsMain.dependencies {
+            implementation(compose.html.core)
             implementation(libs.ktor.client.wasm.js)
         }
     }

@@ -40,7 +40,7 @@
 
 1. Android
 2. iOS
-3. Web WASM
+3. Web JS
 4. Desktop
 
 Важно:
@@ -71,7 +71,7 @@
 Предпочтительный подход:
 - Compose Multiplatform для UI там, где это практично
 - shared module для domain/data/sync
-- platform modules/adapters для Android, iOS, desktop, wasmJs
+- platform modules/adapters для Android, iOS, desktop, js
 - DI в клиенте должен быть реализован через Koin
 
 Если в каком-то месте полное 100% выравнивание платформ сильно усложняет MVP, выбирай максимально практичное решение, но сохрани единый архитектурный KMP-подход.
@@ -278,9 +278,9 @@ Backend должен возвращать JSON.
 - геолокация
 - базовая интеграция уведомлений через абстракции, даже если APNS останется упрощённым
 
-### Web WASM
-- web client на Kotlin/WASM + Compose where practical
-- если Compose WASM в конкретном месте нестабилен для нужной фичи, можно выбрать совместимый практичный вариант в рамках Kotlin multiplatform ecosystem, но приоритет — Compose Multiplatform/Web/WASM friendly approach
+### Web JS
+- web client на Kotlin/JS + Compose Canvas where practical
+- если конкретный Compose web runtime меняется ради стабильности и deployability, это допустимо, если сохраняется Kotlin Multiplatform подход и shared code
 - должен уметь:
     - логин по invite code
     - список контактов
@@ -592,7 +592,7 @@ README.md
 /androidMain
 /iosMain
 /desktopMain
-/wasmJsMain
+/jsMain
 /iosApp
 /desktopApp
 /docs
@@ -625,7 +625,7 @@ README.md
 - создай базовый iosApp wrapper
 - обеспечь понятные инструкции сборки
 
-Важно по Web WASM:
+Важно по Web JS:
 - создай реально осмысленный web target
 - не ограничивайся пустой демонстрационной страницей
 - должны быть как минимум onboarding, contacts, chat, settings
@@ -697,7 +697,7 @@ Caddyfile
     - как подключить БД
     - как собирать и запускать Android
     - как собирать и запускать iOS
-    - как запускать web wasm client
+    - как запускать web js client
     - как запускать desktop client
     - как включить или отключить Android FCM
     - список ограничений MVP
@@ -731,7 +731,7 @@ Caddyfile
     - что работает на Android
     - что работает на iOS
     - что работает на Desktop
-    - что работает на Web WASM
+    - что работает на Web JS
     - какие есть ограничения
 
 7. /infra/DEPLOY.md
@@ -825,7 +825,7 @@ Caddyfile
 - в спорных местах выбирай максимально практичное решение, а не "красивую" архитектуру ради архитектуры
 - KMP shared layer должен быть действительно содержательным, а не декоративным
 - shared-contract layer должен реально использоваться backend и client
-- Web WASM target должен быть реально осмысленным
+- Web JS target должен быть реально осмысленным
 - iOS target должен быть реально заведён на shared code
 - desktop target должен быть реально запускаемым
 - Android push не должен быть обязательным для общей работоспособности системы
@@ -841,7 +841,7 @@ Caddyfile
 - Kotlin Multiplatform client
 - Android target
 - iOS target
-- Web WASM target
+- Web JS target
 - Desktop target
 - docker-compose инфраструктура
 - документация

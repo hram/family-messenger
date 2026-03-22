@@ -60,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 В конце установки сервер покажет что-то вроде:
 
 ```text
-Open in browser: https://123-123-123-123.sslip.io
+Open in browser: http://123.123.123.123:8080
 ```
 
 Скопируй эту ссылку и открой её в браузере.
@@ -97,7 +97,7 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/un
 
 1. Дождалась ли установка конца.
 2. Точно ли ты открываешь адрес, который показал сервер.
-3. Не блокирует ли хостинг порты `80` и `443`.
+3. Не блокирует ли хостинг порт `8080`.
 4. Нет ли опечатки в IP-адресе.
 
 Проверка прямо на сервере:

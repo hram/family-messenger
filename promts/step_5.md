@@ -31,7 +31,7 @@
 5. KMP architecture
 - commonMain не декоративный ли
 - не вынесено ли слишком много критичной логики в платформенные слои
-- реально ли переиспользование кода между Android/iOS/Desktop/Web WASM
+- реально ли переиспользование кода между Android/iOS/Desktop/Web JS
 
 6. Sync consistency
 - initial sync
@@ -46,7 +46,7 @@
 - Android launchability
 - iOS integration realism
 - Desktop launchability
-- Web WASM practicality
+- Web JS practicality
 
 8. Security
 - token handling

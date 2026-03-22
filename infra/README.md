@@ -22,12 +22,12 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 - скачивает готовый web bundle из GitHub Releases
 - поднимает Postgres в Docker
 - создаёт backend service через `systemd`
-- публикует web-клиент через `Caddy` по HTTPS на `https://<server-ip-as-dashes>.sslip.io`
-- открывает итоговый URL вида `https://<server-ip-as-dashes>.sslip.io`
+- публикует web-клиент через `Caddy` на `http://<server-ip>:8080`
+- открывает итоговый URL вида `http://<server-ip>:8080`
 
 После завершения:
 
-- открой в браузере URL, который напечатал установщик, например `https://82-97-243-127.sslip.io`
+- открой в браузере URL, который напечатал установщик, например `http://82.97.243.127:8080`
 - пройди setup wizard
 - задай master password
 - добавь родителей и детей
@@ -328,7 +328,7 @@ sudo systemctl start family-messenger-backend
 docker compose ps postgres
 sudo systemctl status family-messenger-backend --no-pager
 curl http://127.0.0.1:8081/api/health
-curl https://<server-ip-as-dashes>.sslip.io/api/health
+curl http://<server-ip>:8080/api/health
 ```
 
 10. Смотреть логи:
@@ -382,7 +382,7 @@ backend/build/libs/family-messenger-backend-all.jar
 
 ## Что нужно настроить руками на сервере
 
-- открыть firewall для `80/tcp` и `443/tcp`
+- открыть firewall для `8080/tcp`
 - сменить `DB_PASSWORD`
 - настроить backup для docker volume `postgres_data`
-- позже заменить `sslip.io` на свой домен, если понадобится
+- позже перевести web-публикацию на свой домен и HTTPS, если понадобится

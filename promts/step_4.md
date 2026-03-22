@@ -32,7 +32,7 @@ DI в клиенте должен быть реализован через Koin.
 - Android
 - iOS
 - Desktop
-- Web WASM
+- Web JS
 
 4. Реализовать экраны:
 - onboarding

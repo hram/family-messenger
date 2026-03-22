@@ -205,13 +205,13 @@ PORT=8081 ./gradlew :backend:run
 ## Сценарий 12. Web client smoke
 
 Цель:
-- проверить практическую пригодность Web WASM
+- проверить практическую пригодность Web JS
 
 Шаги:
 1. Запустить:
 
 ```bash
-./gradlew :client:composeApp:wasmJsBrowserDevelopmentRun
+./gradlew :client:composeApp:jsBrowserDevelopmentRun
 ```
 
 2. Открыть `http://localhost:8082`.
