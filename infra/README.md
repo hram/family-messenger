@@ -17,9 +17,12 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 
 - ставит Docker Engine и Compose plugin
 - ставит `openjdk-17-jre-headless`
+- ставит `nginx`
 - скачивает `family-messenger-backend-all.jar` из GitHub Releases
+- скачивает готовый web bundle из GitHub Releases
 - поднимает Postgres в Docker
 - создаёт backend service через `systemd`
+- публикует web-клиент через `nginx` на `http://<server-ip>:8080`
 - открывает итоговый URL вида `http://<server-ip>:8080`
 
 После завершения:

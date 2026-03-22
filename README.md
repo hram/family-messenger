@@ -39,6 +39,8 @@ See [backend README](backend/README.md), [backend API notes](backend/docs/api.md
 The practical next steps after the current implementation pass are tracked in [TODO.md](TODO.md).
 Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
 
+Для самой простой пользовательской инструкции смотри [DEPLOY_FOR_FAMILY.md](DEPLOY_FOR_FAMILY.md).
+
 ## Deployment Rule
 
 Для VPS deploy зафиксировано жёсткое правило:
@@ -60,10 +62,11 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 
 Скрипт:
 
-- ставит Docker и Java runtime
+- ставит Docker, Java runtime и nginx
 - поднимает Postgres
 - скачивает готовый `family-messenger-backend-all.jar` из GitHub Releases
-- создаёт `systemd` service
+- скачивает готовый web bundle из GitHub Releases
+- создаёт `systemd` service и публикует сайт на `http://<server-ip>:8080`
 - печатает итоговый URL вида `http://<server-ip>:8080`
 
 Обновление:

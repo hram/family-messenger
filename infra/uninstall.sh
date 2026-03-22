@@ -26,6 +26,9 @@ log "Stopping backend service"
 ${SUDO} systemctl disable --now "${SYSTEMD_UNIT_NAME}" >/dev/null 2>&1 || true
 ${SUDO} rm -f "/etc/systemd/system/${SYSTEMD_UNIT_NAME}.service"
 ${SUDO} systemctl daemon-reload
+${SUDO} rm -f /etc/nginx/sites-enabled/family-messenger
+${SUDO} rm -f /etc/nginx/sites-available/family-messenger
+${SUDO} systemctl restart nginx >/dev/null 2>&1 || true
 
 if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then
   log "Stopping PostgreSQL container"

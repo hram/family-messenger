@@ -9,6 +9,7 @@ SYSTEMD_UNIT_NAME="${SYSTEMD_UNIT_NAME:-family-messenger-backend}"
 APP_USER="${APP_USER:-family}"
 APP_GROUP="${APP_GROUP:-family}"
 SERVER_PORT="${SERVER_PORT:-8080}"
+BACKEND_PORT="${BACKEND_PORT:-8081}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-family_messenger}"
 DB_USER="${DB_USER:-family}"
@@ -21,6 +22,7 @@ RELEASE_VERSION="${RELEASE_VERSION:-}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:16-alpine}"
 POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
+WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
 
 log() {
   printf '[family-messenger] %s\n' "$*"
@@ -101,6 +103,18 @@ install_java() {
   ${SUDO} apt-get install -y openjdk-17-jre-headless
 }
 
+install_nginx() {
+  if command -v nginx >/dev/null 2>&1; then
+    log "nginx already installed"
+    return
+  fi
+
+  log "Installing nginx"
+  ${SUDO} apt-get update
+  ${SUDO} apt-get install -y nginx
+  ${SUDO} systemctl enable --now nginx
+}
+
 ensure_user_and_dirs() {
   if ! getent group "${APP_GROUP}" >/dev/null 2>&1; then
     ${SUDO} groupadd --system "${APP_GROUP}"
@@ -111,6 +125,7 @@ ensure_user_and_dirs() {
 
   ${SUDO} mkdir -p "${INSTALL_ROOT}/runtime"
   ${SUDO} mkdir -p "${INSTALL_ROOT}/postgres"
+  ${SUDO} mkdir -p "${INSTALL_ROOT}/web"
   ${SUDO} mkdir -p "${CONFIG_ROOT}"
   ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}"
 }
@@ -185,10 +200,22 @@ download_jar() {
   ${SUDO} chmod 0644 "${INSTALL_ROOT}/family-messenger-backend-all.jar"
 }
 
+download_web() {
+  local version="$1"
+  local web_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${WEB_ASSET_NAME}"
+  log "Downloading web bundle ${version}"
+  curl -fL "${web_url}" -o /tmp/family-messenger-web.tar.gz
+  ${SUDO} rm -rf "${INSTALL_ROOT}/web"
+  ${SUDO} mkdir -p "${INSTALL_ROOT}/web"
+  ${SUDO} tar -xzf /tmp/family-messenger-web.tar.gz -C "${INSTALL_ROOT}/web"
+  ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
+  rm -f /tmp/family-messenger-web.tar.gz
+}
+
 write_backend_env() {
   local db_password="$1"
   cat <<EOF | ${SUDO} tee "${CONFIG_ROOT}/backend.env" >/dev/null
-SERVER_PORT=${SERVER_PORT}
+SERVER_PORT=${BACKEND_PORT}
 DB_HOST=127.0.0.1
 DB_PORT=${DB_PORT}
 DB_NAME=${DB_NAME}
@@ -204,6 +231,43 @@ EOF
   ${SUDO} chmod 0600 "${CONFIG_ROOT}/backend.env"
 }
 
+write_nginx_config() {
+  cat <<EOF | ${SUDO} tee /etc/nginx/sites-available/family-messenger >/dev/null
+server {
+    listen ${SERVER_PORT};
+    server_name _;
+
+    root ${INSTALL_ROOT}/web;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location = /openapi.json {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_set_header Host \$host;
+    }
+
+    location /swagger-ui/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_set_header Host \$host;
+    }
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+}
+EOF
+  ${SUDO} ln -sf /etc/nginx/sites-available/family-messenger /etc/nginx/sites-enabled/family-messenger
+  ${SUDO} rm -f /etc/nginx/sites-enabled/default
+}
+
 write_install_state() {
   local version="$1"
   local public_ip="$2"
@@ -217,12 +281,14 @@ SYSTEMD_UNIT_NAME=${SYSTEMD_UNIT_NAME}
 APP_USER=${APP_USER}
 APP_GROUP=${APP_GROUP}
 SERVER_PORT=${SERVER_PORT}
+BACKEND_PORT=${BACKEND_PORT}
 DB_PORT=${DB_PORT}
 DB_NAME=${DB_NAME}
 DB_USER=${DB_USER}
 POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
 POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
+WEB_ASSET_NAME=${WEB_ASSET_NAME}
 APP_BASE_URL=http://${public_ip}:${SERVER_PORT}
 EOF
   ${SUDO} chmod 0600 "${CONFIG_ROOT}/install.env"
@@ -275,12 +341,15 @@ main() {
   log "Installing Family Messenger ${version}"
   install_docker
   install_java
+  install_nginx
   ensure_user_and_dirs
   write_schema "${version}"
   write_postgres_compose "${db_password}"
   write_backend_env "${db_password}"
   write_systemd_unit
+  write_nginx_config
   download_jar "${version}"
+  download_web "${version}"
 
   log "Starting PostgreSQL"
   ${SUDO} docker compose -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d
@@ -289,6 +358,8 @@ main() {
   log "Starting backend service"
   ${SUDO} systemctl daemon-reload
   ${SUDO} systemctl enable --now "${SYSTEMD_UNIT_NAME}"
+  ${SUDO} nginx -t
+  ${SUDO} systemctl restart nginx
   maybe_open_ufw
   write_install_state "${version}" "${public_ip}"
 

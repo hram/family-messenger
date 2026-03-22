@@ -8,7 +8,7 @@ User=family
 Group=family
 WorkingDirectory=/opt/family-messenger
 EnvironmentFile=/etc/family-messenger/backend.env
-ExecStart=/usr/bin/java -Dktor.deployment.port=${SERVER_PORT} -jar /opt/family-messenger/family-messenger-backend-all.jar
+ExecStart=/usr/bin/java -Dktor.deployment.port=${BACKEND_PORT} -jar /opt/family-messenger/family-messenger-backend-all.jar
 Restart=always
 RestartSec=5
 SuccessExitStatus=143

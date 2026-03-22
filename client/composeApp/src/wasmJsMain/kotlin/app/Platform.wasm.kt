@@ -34,7 +34,7 @@ actual fun createPlatformServices(): PlatformServices = PlatformServices(
     platformInfo = PlatformInfo(
         type = PlatformType.WEB,
         displayName = "Web",
-        defaultBaseUrl = "http://localhost:8081",
+        defaultBaseUrl = window.location.origin,
     ),
     httpClient = HttpClient(Js),
     settingsStore = BrowserStore("fm-settings"),
