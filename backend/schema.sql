@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS devices (
     id BIGSERIAL PRIMARY KEY,
     family_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
-    device_name VARCHAR(120) NOT NULL,
     platform VARCHAR(32) NOT NULL,
     push_token VARCHAR(512) NULL,
     last_seen_at TIMESTAMPTZ NULL,
@@ -28,13 +27,14 @@ CREATE TABLE IF NOT EXISTS devices (
     updated_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_devices_family_name_platform ON devices(family_id, device_name, platform);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_devices_family_user_platform ON devices(family_id, user_id, platform);
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);
 
 CREATE TABLE IF NOT EXISTS invites (
     id BIGSERIAL PRIMARY KEY,
     family_id BIGINT NOT NULL,
     code VARCHAR(64) NOT NULL,
+    user_id BIGINT NULL,
     role VARCHAR(32) NOT NULL,
     display_name VARCHAR(120) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS invites (
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_invites_code ON invites(code);
 CREATE INDEX IF NOT EXISTS idx_invites_family_id ON invites(family_id);
+CREATE INDEX IF NOT EXISTS idx_invites_user_id ON invites(user_id);
 
 CREATE TABLE IF NOT EXISTS messages (
     id BIGSERIAL PRIMARY KEY,

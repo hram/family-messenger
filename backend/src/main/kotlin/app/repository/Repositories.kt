@@ -13,7 +13,6 @@ interface AuthRepository {
 
     suspend fun registerDevice(
         inviteCode: String,
-        deviceName: String,
         platform: String,
         pushToken: String?,
         tokenHash: String,
@@ -24,7 +23,6 @@ interface AuthRepository {
 
     suspend fun login(
         inviteCode: String,
-        deviceName: String,
         platform: String,
         tokenHash: String,
         rawToken: String,
@@ -58,7 +56,7 @@ interface MessageRepository {
 }
 
 interface PresenceRepository {
-    suspend fun ping(principal: SessionPrincipal, deviceName: String?, now: Instant)
+    suspend fun ping(principal: SessionPrincipal, now: Instant)
     suspend fun shareLocation(principal: SessionPrincipal, latitude: Double, longitude: Double, accuracy: Double?, label: String?, now: Instant)
 }
 

@@ -6,6 +6,7 @@ import com.familymessenger.contract.ApiResponse
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactsResponse
 import com.familymessenger.contract.ErrorCode
+import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.HealthResponse
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.LoginRequest
@@ -58,10 +59,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.koin.core.context.startKoin
-import org.koin.core.context.stopKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import org.koin.dsl.koinApplication
 
 private const val LOCAL_DB_KEY = "client.local.db.v1"
 private const val SESSION_KEY = "client.session.v1"
@@ -114,7 +114,6 @@ data class LocalSettings(
     val serverBaseUrl: String = "",
     val pollingEnabled: Boolean = true,
     val pushEnabled: Boolean = false,
-    val lastDeviceName: String = "",
 )
 
 @Serializable
@@ -208,12 +207,6 @@ class ClientSettingsRepository(
     suspend fun updatePushEnabled(enabled: Boolean) {
         database.update { snapshot ->
             snapshot.copy(settings = snapshot.settings.copy(pushEnabled = enabled))
-        }
-    }
-
-    suspend fun rememberDeviceName(deviceName: String) {
-        database.update { snapshot ->
-            snapshot.copy(settings = snapshot.settings.copy(lastDeviceName = deviceName))
         }
     }
 
@@ -361,12 +354,12 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
-    suspend fun ping(deviceName: String?): AckResponse =
+    suspend fun ping(): AckResponse =
         executor.execute {
             httpClient.post(url("/api/presence/ping")) {
                 authHeader()
                 contentType(ContentType.Application.Json)
-                setBody(PresencePingRequest(deviceName))
+                setBody(PresencePingRequest())
             }.body()
         }
 
@@ -395,31 +388,42 @@ class SessionRepository(
     private val apiClient: FamilyMessengerApiClient,
     private val sessionStore: SessionStore,
     private val localDatabase: LocalDatabase,
-    private val settingsRepository: ClientSettingsRepository,
     private val platformInfo: PlatformInfo,
 ) {
     suspend fun restore(): StoredSession? = sessionStore.currentSession()
 
-    suspend fun registerDevice(inviteCode: String, deviceName: String): StoredSession {
+    suspend fun refreshSessionFromServer(): StoredSession {
+        val existing = sessionStore.currentSession() ?: throw AppException.Unauthorized("Please authenticate first")
+        val profile = apiClient.profile()
+        val refreshed = StoredSession(
+            auth = AuthPayload(
+                user = profile.user,
+                family = profile.family,
+                session = existing.auth.session,
+            ),
+        )
+        sessionStore.save(refreshed)
+        return refreshed
+    }
+
+    suspend fun registerDevice(inviteCode: String): StoredSession {
         val auth = apiClient.registerDevice(
             RegisterDeviceRequest(
                 inviteCode = inviteCode.trim(),
-                deviceName = deviceName.trim(),
                 platform = platformInfo.type,
             ),
         )
-        return persistAuth(auth, deviceName)
+        return persistAuth(auth)
     }
 
-    suspend fun login(inviteCode: String, deviceName: String): StoredSession {
+    suspend fun login(inviteCode: String): StoredSession {
         val auth = apiClient.login(
             LoginRequest(
                 inviteCode = inviteCode.trim(),
-                deviceName = deviceName.trim(),
                 platform = platformInfo.type,
             ),
         )
-        return persistAuth(auth, deviceName)
+        return persistAuth(auth)
     }
 
     suspend fun logout() {
@@ -434,10 +438,9 @@ class SessionRepository(
         }
     }
 
-    private suspend fun persistAuth(auth: AuthPayload, deviceName: String): StoredSession {
+    private suspend fun persistAuth(auth: AuthPayload): StoredSession {
         val session = StoredSession(auth)
         sessionStore.save(session)
-        settingsRepository.rememberDeviceName(deviceName)
         return session
     }
 }
@@ -470,7 +473,8 @@ class MessagesRepository(
         return localDatabase.snapshot().messages
             .map { it.payload }
             .filter { payload ->
-                (payload.senderUserId == currentUserId && payload.recipientUserId == contactId) ||
+                (contactId == FAMILY_GROUP_CHAT_ID && payload.recipientUserId == FAMILY_GROUP_CHAT_ID) ||
+                    (payload.senderUserId == currentUserId && payload.recipientUserId == contactId) ||
                     (payload.senderUserId == contactId && payload.recipientUserId == currentUserId)
             }
             .sortedBy { it.createdAt?.toEpochMilliseconds() ?: 0L }
@@ -527,7 +531,13 @@ class MessagesRepository(
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return
         val messageIds = localDatabase.snapshot().messages
             .map { it.payload }
-            .filter { it.senderUserId == contactId && it.recipientUserId == currentUserId }
+            .filter {
+                if (contactId == FAMILY_GROUP_CHAT_ID) {
+                    it.senderUserId != currentUserId && it.recipientUserId == FAMILY_GROUP_CHAT_ID
+                } else {
+                    it.senderUserId == contactId && it.recipientUserId == currentUserId
+                }
+            }
             .mapNotNull { it.id }
             .take(200)
         if (messageIds.isEmpty()) return
@@ -541,7 +551,13 @@ class MessagesRepository(
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id ?: return
         val messageIds = localDatabase.snapshot().messages
             .map { it.payload }
-            .filter { it.senderUserId == contactId && it.recipientUserId == currentUserId }
+            .filter {
+                if (contactId == FAMILY_GROUP_CHAT_ID) {
+                    it.senderUserId != currentUserId && it.recipientUserId == FAMILY_GROUP_CHAT_ID
+                } else {
+                    it.senderUserId == contactId && it.recipientUserId == currentUserId
+                }
+            }
             .mapNotNull { it.id }
             .take(200)
         if (messageIds.isEmpty()) return
@@ -602,8 +618,8 @@ class PresenceRepository(
     private val apiClient: FamilyMessengerApiClient,
     private val geolocationService: GeolocationService,
 ) {
-    suspend fun ping(deviceName: String?) {
-        apiClient.ping(deviceName)
+    suspend fun ping() {
+        apiClient.ping()
     }
 
     suspend fun currentLocation(): LocationPayload? = geolocationService.currentLocation()
@@ -625,8 +641,8 @@ class RegisterDeviceUseCase(
     private val sessionRepository: SessionRepository,
     private val syncEngine: SyncEngine,
 ) {
-    suspend operator fun invoke(inviteCode: String, deviceName: String): StoredSession {
-        val session = sessionRepository.registerDevice(inviteCode, deviceName)
+    suspend operator fun invoke(inviteCode: String): StoredSession {
+        val session = sessionRepository.registerDevice(inviteCode)
         syncEngine.kick()
         return session
     }
@@ -636,8 +652,8 @@ class LoginUseCase(
     private val sessionRepository: SessionRepository,
     private val syncEngine: SyncEngine,
 ) {
-    suspend operator fun invoke(inviteCode: String, deviceName: String): StoredSession {
-        val session = sessionRepository.login(inviteCode, deviceName)
+    suspend operator fun invoke(inviteCode: String): StoredSession {
+        val session = sessionRepository.login(inviteCode)
         syncEngine.kick()
         return session
     }
@@ -727,7 +743,7 @@ class SyncEngine(
         }
 
         if (cycles % 3 == 0) {
-            presenceRepository.ping(settings.lastDeviceName.ifBlank { null })
+            presenceRepository.ping()
         }
 
         if (settings.pushEnabled) {
@@ -841,12 +857,12 @@ class ClientApp private constructor(
 
     fun close() {
         viewModel.close()
-        stopKoin()
+        koinHandle.close()
     }
 
     companion object {
         fun create(platformServices: PlatformServices): ClientApp {
-            val app = startKoin {
+            val app = koinApplication {
                 modules(commonClientModule(platformServices))
             }
             return ClientApp(app)
@@ -867,7 +883,7 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { ClientSettingsRepository(get(), get()) }
     single { ApiExecutor(get()) }
     single { FamilyMessengerApiClient(get(), get(), get(), get()) }
-    single { SessionRepository(get(), get(), get(), get(), get()) }
+    single { SessionRepository(get(), get(), get(), get()) }
     single { ContactsRepository(get(), get()) }
     single { MessagesRepository(get(), get(), get()) }
     single { PresenceRepository(get(), get()) }

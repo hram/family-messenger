@@ -37,7 +37,6 @@ class AppViewModel(
             platformName = platformInfo.displayName,
             onboarding = OnboardingFormState(
                 baseUrl = platformInfo.defaultBaseUrl,
-                deviceName = platformInfo.displayName,
             ),
         ),
     )
@@ -54,7 +53,6 @@ class AppViewModel(
                     screen = if (session == null) Screen.ONBOARDING else mutableState.value.screen.takeIf { it != Screen.ONBOARDING } ?: Screen.CONTACTS,
                     onboarding = mutableState.value.onboarding.copy(
                         baseUrl = settings.serverBaseUrl,
-                        deviceName = settings.lastDeviceName.ifBlank { platformInfo.displayName },
                     ),
                     settings = SettingsState(
                         pollingEnabled = settings.pollingEnabled,
@@ -69,13 +67,33 @@ class AppViewModel(
             mutableState.value = mutableState.value.copy(
                 onboarding = mutableState.value.onboarding.copy(
                     baseUrl = settings.serverBaseUrl,
-                    deviceName = settings.lastDeviceName.ifBlank { platformInfo.displayName },
                 ),
                 settings = SettingsState(settings.pollingEnabled, settings.pushEnabled),
             )
             if (sessionRepository.restore() != null) {
-                syncEngine.start(scope)
-                refreshContacts()
+                runCatching {
+                    val session = sessionRepository.refreshSessionFromServer()
+                    syncEngine.start(scope)
+                    val contacts = contactsRepository.refreshContacts()
+                    mutableState.value = mutableState.value.copy(
+                        screen = Screen.CONTACTS,
+                        currentUser = session.auth.user,
+                        contacts = contacts,
+                        errorMessage = null,
+                    )
+                }.onFailure {
+                    sessionRepository.logout()
+                    syncEngine.stop()
+                    mutableState.value = mutableState.value.copy(
+                        screen = Screen.ONBOARDING,
+                        currentUser = null,
+                        contacts = emptyList(),
+                        messages = emptyList(),
+                        selectedContactId = null,
+                        selectedContactName = null,
+                        draftMessage = "",
+                    )
+                }
             }
         }
     }
@@ -83,8 +101,6 @@ class AppViewModel(
     fun updateBaseUrl(value: String) = mutate { copy(onboarding = onboarding.copy(baseUrl = value)) }
 
     fun updateInviteCode(value: String) = mutate { copy(onboarding = onboarding.copy(inviteCode = value)) }
-
-    fun updateDeviceName(value: String) = mutate { copy(onboarding = onboarding.copy(deviceName = value)) }
 
     fun setAuthMode(mode: AuthMode) = mutate { copy(onboarding = onboarding.copy(authMode = mode)) }
 
@@ -95,8 +111,8 @@ class AppViewModel(
             val onboarding = state.value.onboarding
             settingsRepository.updateServerBaseUrl(onboarding.baseUrl)
             val session = when (onboarding.authMode) {
-                AuthMode.REGISTER -> registerDevice(onboarding.inviteCode, onboarding.deviceName)
-                AuthMode.LOGIN -> login(onboarding.inviteCode, onboarding.deviceName)
+                AuthMode.REGISTER -> registerDevice(onboarding.inviteCode)
+                AuthMode.LOGIN -> login(onboarding.inviteCode)
             }
             syncEngine.start(scope)
             val contacts = loadContacts()

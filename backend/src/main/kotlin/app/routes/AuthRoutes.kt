@@ -16,7 +16,7 @@ fun Route.authRoutes(authService: AuthService) {
         description = "Register a device using an invite code and issue a bearer session token."
         request {
             body<RegisterDeviceRequest> {
-                description = "Invite code, device identity and platform."
+                description = "Invite code and platform."
             }
         }
         response {
@@ -32,10 +32,10 @@ fun Route.authRoutes(authService: AuthService) {
     }
 
     post("/auth/login", {
-        description = "Log in an already registered device using the invite code and device identity."
+        description = "Log in an already registered device using the invite code and platform."
         request {
             body<LoginRequest> {
-                description = "Invite code and previously known device identity."
+                description = "Invite code and platform."
             }
         }
         response {

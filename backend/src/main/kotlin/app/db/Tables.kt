@@ -27,7 +27,6 @@ object DevicesTable : Table("devices") {
     val id = long("id").autoIncrement()
     val familyId = long("family_id").index()
     val userId = long("user_id").index()
-    val deviceName = varchar("device_name", 120)
     val platform = varchar("platform", 32)
     val pushToken = varchar("push_token", 512).nullable()
     val lastSeenAt = timestamp("last_seen_at").nullable()
@@ -36,7 +35,7 @@ object DevicesTable : Table("devices") {
     override val primaryKey = PrimaryKey(id)
 
     init {
-        uniqueIndex(familyId, deviceName, platform)
+        uniqueIndex(familyId, userId, platform)
     }
 }
 
@@ -44,6 +43,7 @@ object InvitesTable : Table("invites") {
     val id = long("id").autoIncrement()
     val familyId = long("family_id").index()
     val code = varchar("code", 64).uniqueIndex()
+    val userId = long("user_id").nullable().index()
     val role = varchar("role", 32)
     val displayName = varchar("display_name", 120)
     val isActive = bool("is_active").default(true)

@@ -29,12 +29,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Docker (from `infra/` directory)
 ```bash
 docker compose up -d --build          # Build and start backend + postgres
-docker compose down                   # Stop containers
-docker compose logs -f backend        # View backend logs
-docker compose down -v                # Stop and clear volumes
-
-# Postgres only (backend runs in IDE):
-docker compose -f docker-compose.local.yml up -d
 ```
 
 ## Architecture

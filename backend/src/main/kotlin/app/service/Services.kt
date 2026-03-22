@@ -14,6 +14,7 @@ import app.repository.ProfileRepository
 import com.familymessenger.contract.AckResponse
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactsResponse
+import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.LoginRequest
 import com.familymessenger.contract.MarkDeliveredRequest
 import com.familymessenger.contract.MarkReadRequest
@@ -43,7 +44,6 @@ class AuthService(
 ) {
     suspend fun registerDevice(request: RegisterDeviceRequest, clientKey: String): AuthPayload {
         validateInviteCode(request.inviteCode)
-        validateDeviceName(request.deviceName)
         validatePushToken(request.pushToken)
         rateLimitService.checkAuth(clientKey)
 
@@ -51,7 +51,6 @@ class AuthService(
         val now = Clock.System.now()
         return repository.registerDevice(
             inviteCode = request.inviteCode,
-            deviceName = request.deviceName.trim(),
             platform = request.platform.name,
             pushToken = request.pushToken?.trim(),
             tokenHash = issuedToken.hash,
@@ -63,14 +62,12 @@ class AuthService(
 
     suspend fun login(request: LoginRequest, clientKey: String): AuthPayload {
         validateInviteCode(request.inviteCode)
-        validateDeviceName(request.deviceName)
         rateLimitService.checkAuth(clientKey)
 
         val issuedToken = tokenService.issueToken()
         val now = Clock.System.now()
         return repository.login(
             inviteCode = request.inviteCode,
-            deviceName = request.deviceName.trim(),
             platform = request.platform.name,
             tokenHash = issuedToken.hash,
             rawToken = issuedToken.rawToken,
@@ -139,8 +136,7 @@ class PresenceService(
     private val repository: PresenceRepository,
 ) {
     suspend fun ping(principal: SessionPrincipal, request: PresencePingRequest): AckResponse {
-        request.deviceName?.let(::validateDeviceName)
-        repository.ping(principal, request.deviceName?.trim(), Clock.System.now())
+        repository.ping(principal, Clock.System.now())
         return AckResponse(true)
     }
 
@@ -217,13 +213,6 @@ private fun validateInviteCode(inviteCode: String) {
     }
 }
 
-private fun validateDeviceName(deviceName: String) {
-    val normalized = deviceName.trim()
-    if (normalized.length !in 2..120) {
-        throw ValidationException("deviceName must be between 2 and 120 characters")
-    }
-}
-
 private fun validatePushToken(pushToken: String?) {
     if (pushToken != null && pushToken.trim().length > 512) {
         throw ValidationException("pushToken must be at most 512 characters")
@@ -231,8 +220,8 @@ private fun validatePushToken(pushToken: String?) {
 }
 
 private fun validateMessageRequest(request: SendMessageRequest) {
-    if (request.recipientUserId <= 0) {
-        throw ValidationException("recipientUserId must be positive")
+    if (request.recipientUserId < FAMILY_GROUP_CHAT_ID) {
+        throw ValidationException("recipientUserId must be >= 0")
     }
 
     val uuid = request.clientMessageUuid.trim()

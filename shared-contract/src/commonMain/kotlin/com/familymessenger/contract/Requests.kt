@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RegisterDeviceRequest(
     val inviteCode: String,
-    val deviceName: String,
     val platform: PlatformType,
     val pushToken: String? = null,
 )
@@ -13,7 +12,6 @@ data class RegisterDeviceRequest(
 @Serializable
 data class LoginRequest(
     val inviteCode: String,
-    val deviceName: String,
     val platform: PlatformType,
 )
 
@@ -51,9 +49,7 @@ data class ShareLocationRequest(
 )
 
 @Serializable
-data class PresencePingRequest(
-    val deviceName: String? = null,
-)
+class PresencePingRequest
 
 @Serializable
 data class UpdatePushTokenRequest(

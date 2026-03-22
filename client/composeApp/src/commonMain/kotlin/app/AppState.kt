@@ -21,7 +21,6 @@ enum class AuthMode {
 data class OnboardingFormState(
     val baseUrl: String = "",
     val inviteCode: String = "",
-    val deviceName: String = "",
     val authMode: AuthMode = AuthMode.REGISTER,
 )
 

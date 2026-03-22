@@ -48,7 +48,6 @@
 
 ## Валидация
 
-- `deviceName`: `2..120`
 - `pushToken`: до `512`
 - `clientMessageUuid`: валидный UUID
 - `messageIds`: `1..200`

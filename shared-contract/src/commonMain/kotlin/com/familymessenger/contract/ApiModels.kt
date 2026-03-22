@@ -4,6 +4,8 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+const val FAMILY_GROUP_CHAT_ID: Long = 0L
+
 @Serializable
 data class ApiResponse<T>(
     val success: Boolean,
@@ -64,6 +66,9 @@ enum class UserRole {
 
     @SerialName("child")
     CHILD,
+
+    @SerialName("family")
+    FAMILY,
 }
 
 @Serializable

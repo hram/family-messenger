@@ -16,6 +16,7 @@ import app.error.UnauthorizedException
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.DeviceSession
+import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.FamilySummary
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.MessagePayload
@@ -42,6 +43,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import kotlin.time.Duration.Companion.minutes
@@ -53,7 +55,6 @@ private const val ENTITY_LOCATION = "location"
 class ExposedAuthRepository : AuthRepository {
     override suspend fun registerDevice(
         inviteCode: String,
-        deviceName: String,
         platform: String,
         pushToken: String?,
         tokenHash: String,
@@ -63,8 +64,8 @@ class ExposedAuthRepository : AuthRepository {
     ): AuthPayload = dbQuery {
         val invite = findInvite(inviteCode)
 
-        if (invite[InvitesTable.usesCount] >= invite[InvitesTable.maxUses]) {
-            throw ConflictException("Invite code usage limit reached")
+        if (invite[InvitesTable.userId] != null) {
+            throw ConflictException("Invite code is already bound to a user")
         }
 
         if (invite[InvitesTable.expiresAt]?.let { it < now } == true) {
@@ -72,20 +73,8 @@ class ExposedAuthRepository : AuthRepository {
         }
 
         val familyId = invite[InvitesTable.familyId]
-        val existingDevice = DevicesTable.selectAll().where {
-            (DevicesTable.familyId eq familyId) and
-                (DevicesTable.deviceName eq deviceName) and
-                (DevicesTable.platform eq platform)
-        }.singleOrNull()
 
-        if (existingDevice != null) {
-            throw ConflictException(
-                message = "Device is already registered",
-                details = mapOf("deviceName" to deviceName, "platform" to platform),
-            )
-        }
-
-        val userId = UsersTable.insert {
+        val createdUserId = UsersTable.insert {
             it[UsersTable.familyId] = familyId
             it[displayName] = invite[InvitesTable.displayName]
             it[role] = invite[InvitesTable.role]
@@ -96,8 +85,7 @@ class ExposedAuthRepository : AuthRepository {
 
         val deviceId = DevicesTable.insert {
             it[DevicesTable.familyId] = familyId
-            it[DevicesTable.userId] = userId
-            it[DevicesTable.deviceName] = deviceName
+            it[DevicesTable.userId] = createdUserId
             it[DevicesTable.platform] = platform
             it[DevicesTable.pushToken] = pushToken
             it[lastSeenAt] = now
@@ -106,18 +94,17 @@ class ExposedAuthRepository : AuthRepository {
         }[DevicesTable.id]
 
         InvitesTable.update({ InvitesTable.id eq invite[InvitesTable.id] }) {
-            with(org.jetbrains.exposed.sql.SqlExpressionBuilder) {
-                it.update(InvitesTable.usesCount, InvitesTable.usesCount + 1)
-            }
+            it[InvitesTable.userId] = createdUserId
+            it[usesCount] = 1
+            it[maxUses] = 1
         }
 
-        persistToken(userId, deviceId, familyId, tokenHash, expiresAt, now)
-        buildAuthPayload(userId, familyId, rawToken, expiresAt)
+        persistToken(createdUserId, deviceId, familyId, tokenHash, expiresAt, now)
+        buildAuthPayload(createdUserId, familyId, rawToken, expiresAt)
     }
 
     override suspend fun login(
         inviteCode: String,
-        deviceName: String,
         platform: String,
         tokenHash: String,
         rawToken: String,
@@ -126,15 +113,19 @@ class ExposedAuthRepository : AuthRepository {
     ): AuthPayload = dbQuery {
         val invite = findInvite(inviteCode)
         val familyId = invite[InvitesTable.familyId]
+        val invitedUserId = invite[InvitesTable.userId]
+            ?: throw UnauthorizedException("Invite code is not registered yet")
 
         val deviceRow = DevicesTable.join(UsersTable, JoinType.INNER, additionalConstraint = {
             DevicesTable.userId eq UsersTable.id
         }).selectAll().where {
             (DevicesTable.familyId eq familyId) and
-                (DevicesTable.deviceName eq deviceName) and
                 (DevicesTable.platform eq platform) and
+                (DevicesTable.userId eq invitedUserId) and
                 (UsersTable.isActive eq true)
-        }.singleOrNull() ?: throw UnauthorizedException("Unknown device or invite code")
+        }.orderBy(DevicesTable.updatedAt to SortOrder.DESC)
+            .limit(1)
+            .singleOrNull() ?: throw UnauthorizedException("Unknown invite code or platform")
 
         val userId = deviceRow[DevicesTable.userId]
         val deviceId = deviceRow[DevicesTable.id]
@@ -152,11 +143,23 @@ class ExposedAuthRepository : AuthRepository {
     }
 
     override suspend fun resolveSession(tokenHash: String, now: Instant): SessionPrincipal? = dbQuery {
-        val row = AuthTokensTable.selectAll().where {
-            (AuthTokensTable.tokenHash eq tokenHash) and
-                (AuthTokensTable.revokedAt.isNull()) and
-                (AuthTokensTable.expiresAt greater now)
-        }.singleOrNull() ?: return@dbQuery null
+        val row = AuthTokensTable
+            .join(UsersTable, JoinType.INNER, additionalConstraint = {
+                AuthTokensTable.userId eq UsersTable.id
+            })
+            .join(DevicesTable, JoinType.INNER, additionalConstraint = {
+                AuthTokensTable.deviceId eq DevicesTable.id
+            })
+            .selectAll()
+            .where {
+                (AuthTokensTable.tokenHash eq tokenHash) and
+                    (AuthTokensTable.revokedAt.isNull()) and
+                    (AuthTokensTable.expiresAt greater now) and
+                    (UsersTable.isActive eq true) and
+                    (DevicesTable.userId eq AuthTokensTable.userId) and
+                    (DevicesTable.familyId eq AuthTokensTable.familyId)
+            }
+            .singleOrNull() ?: return@dbQuery null
 
         val tokenId = row[AuthTokensTable.id]
         val userId = row[AuthTokensTable.userId]
@@ -246,7 +249,11 @@ class ExposedProfileRepository : ProfileRepository {
     }
 
     override suspend fun getContacts(currentUserId: Long, familyId: Long, now: Instant): List<ContactSummary> = dbQuery {
-        UsersTable.selectAll().where {
+        val familyChat = FamiliesTable.selectAll().where { FamiliesTable.id eq familyId }
+            .single()
+            .toFamilyChatContact(familyId)
+
+        val directContacts = UsersTable.selectAll().where {
             (UsersTable.familyId eq familyId) and
                 (UsersTable.isActive eq true) and
                 (UsersTable.id neq currentUserId)
@@ -257,6 +264,8 @@ class ExposedProfileRepository : ProfileRepository {
                 isOnline = lastSeenAt != null && (lastSeenAt >= (now - 2.minutes)),
             )
         }
+
+        listOf(familyChat) + directContacts
     }
 }
 
@@ -275,12 +284,6 @@ class ExposedMessageRepository : MessageRepository {
             throw ConflictException("Cannot send messages to self")
         }
 
-        val recipient = UsersTable.selectAll().where {
-            (UsersTable.id eq recipientUserId) and
-                (UsersTable.familyId eq principal.familyId) and
-                (UsersTable.isActive eq true)
-        }.singleOrNull() ?: throw NotFoundException("Recipient not found")
-
         val duplicate = MessagesTable.selectAll().where {
             (MessagesTable.senderUserId eq principal.userId) and
                 (MessagesTable.clientMessageUuid eq clientMessageUuid)
@@ -290,7 +293,20 @@ class ExposedMessageRepository : MessageRepository {
             return@dbQuery duplicate.toMessagePayload()
         }
 
-        recipient[UsersTable.id]
+        val targetRecipientIds = if (recipientUserId == FAMILY_GROUP_CHAT_ID) {
+            UsersTable.selectAll().where {
+                (UsersTable.familyId eq principal.familyId) and
+                    (UsersTable.isActive eq true) and
+                    (UsersTable.id neq principal.userId)
+            }.map { it[UsersTable.id] }
+        } else {
+            val recipient = UsersTable.selectAll().where {
+                (UsersTable.id eq recipientUserId) and
+                    (UsersTable.familyId eq principal.familyId) and
+                    (UsersTable.isActive eq true)
+            }.singleOrNull() ?: throw NotFoundException("Recipient not found")
+            listOf(recipient[UsersTable.id])
+        }
 
         val messageId = MessagesTable.insert {
             it[familyId] = principal.familyId
@@ -315,12 +331,14 @@ class ExposedMessageRepository : MessageRepository {
             it[MessageReceiptsTable.updatedAt] = now
         }[MessageReceiptsTable.id]
 
-        MessageReceiptsTable.insert {
-            it[MessageReceiptsTable.messageId] = messageId
-            it[MessageReceiptsTable.userId] = recipientUserId
-            it[MessageReceiptsTable.deliveredAt] = null
-            it[MessageReceiptsTable.readAt] = null
-            it[MessageReceiptsTable.updatedAt] = now
+        targetRecipientIds.forEach { targetUserId ->
+            MessageReceiptsTable.insert {
+                it[MessageReceiptsTable.messageId] = messageId
+                it[MessageReceiptsTable.userId] = targetUserId
+                it[MessageReceiptsTable.deliveredAt] = null
+                it[MessageReceiptsTable.readAt] = null
+                it[MessageReceiptsTable.updatedAt] = now
+            }
         }
 
         recordSyncEvent(principal.familyId, ENTITY_MESSAGE, messageId, now)
@@ -437,17 +455,15 @@ class ExposedMessageRepository : MessageRepository {
             (MessageReceiptsTable.messageId inList messageIds) and
                 (MessageReceiptsTable.userId eq principal.userId) and
                 (MessagesTable.familyId eq principal.familyId) and
-                (MessagesTable.recipientUserId eq principal.userId)
+                ((MessagesTable.recipientUserId eq principal.userId) or
+                    (MessagesTable.recipientUserId eq FAMILY_GROUP_CHAT_ID))
         }.toList()
     }
 }
 
 class ExposedPresenceRepository : PresenceRepository {
-    override suspend fun ping(principal: SessionPrincipal, deviceName: String?, now: Instant): Unit = dbQuery {
+    override suspend fun ping(principal: SessionPrincipal, now: Instant): Unit = dbQuery {
         DevicesTable.update({ DevicesTable.id eq principal.deviceId }) {
-            deviceName?.takeIf { it.isNotBlank() }?.let { safeName ->
-                it[DevicesTable.deviceName] = safeName
-            }
             it[lastSeenAt] = now
             it[updatedAt] = now
         }
@@ -511,6 +527,17 @@ private fun ResultRow.toUserProfile(): UserProfile = UserProfile(
     displayName = this[UsersTable.displayName],
     role = UserRole.valueOf(this[UsersTable.role]),
     lastSeenAt = this[UsersTable.lastSeenAt],
+)
+
+private fun ResultRow.toFamilyChatContact(familyId: Long): ContactSummary = ContactSummary(
+    user = UserProfile(
+        id = FAMILY_GROUP_CHAT_ID,
+        familyId = familyId,
+        displayName = this[FamiliesTable.name],
+        role = UserRole.FAMILY,
+        lastSeenAt = null,
+    ),
+    isOnline = true,
 )
 
 private fun ResultRow.toMessagePayload(): MessagePayload = MessagePayload(

@@ -164,7 +164,6 @@ gradle.properties
     - регистрация устройства по invite code
     - принимает:
         - invite_code
-        - device_name
         - platform
         - push_token (optional)
     - platform может быть: android, ios, web, desktop
@@ -346,7 +345,6 @@ Backend должен возвращать JSON.
 
 1. Экран первичной привязки устройства
     - поле invite code
-    - поле device/user display name
     - выбор роли или получение роли из invite
     - кнопка подключиться
     - сохранение auth token
@@ -469,7 +467,6 @@ users:
 devices:
 - id
 - user_id
-- device_name
 - platform
 - push_token nullable
 - last_seen_at

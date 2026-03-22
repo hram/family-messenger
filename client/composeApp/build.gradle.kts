@@ -23,6 +23,7 @@ kotlin {
     sourceSets {
         val androidMain by getting
         val desktopMain by getting
+        val desktopTest by getting
         val wasmJsMain by getting
         val iosX64Main by getting
         val iosArm64Main by getting
@@ -59,6 +60,15 @@ kotlin {
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.ktor.client.okhttp)
+        }
+        desktopTest.dependencies {
+            implementation(compose.desktop.uiTestJUnit4)
+            implementation(compose.desktop.currentOs)
+            implementation(project(":backend"))
+            implementation(libs.junit)
+            implementation(libs.ktor.server.core)
+            implementation(libs.ktor.server.netty)
+            implementation("com.h2database:h2:2.3.232")
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.wasm.js)

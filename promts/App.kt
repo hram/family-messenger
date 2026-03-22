@@ -184,11 +184,6 @@ private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
                 onValueChange = viewModel::updateInviteCode,
                 label = "Invite Code",
             )
-            TgTextField(
-                value = state.onboarding.deviceName,
-                onValueChange = viewModel::updateDeviceName,
-                label = "Device Name",
-            )
 
             Button(
                 onClick = viewModel::submitAuth,

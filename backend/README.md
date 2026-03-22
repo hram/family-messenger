@@ -33,11 +33,14 @@ Backend реализован на `Ktor + Koin + Exposed DSL + PostgreSQL`.
 
 Backend покрыт минимальным набором integration/smoke тестов в [BackendIntegrationTest.kt](/home/hram/projects/family-messenger/backend/src/test/kotlin/app/BackendIntegrationTest.kt).
 
+Подробное описание сценария смены пользователей и проверки разделения чатов лежит в [testing.md](/home/hram/projects/family-messenger/backend/docs/testing.md).
+
 Что проверяется:
 
 - `register-device` happy path
 - повторное использование invite при `max_uses = 1`
 - `login` для уже зарегистрированного устройства
+- смена пользователя между `PARENT-DEMO` и `CHILD-DEMO` без смешивания профилей, контактов и сообщений
 - `401 Unauthorized` для protected route без bearer token
 - `profile/me` с валидным token
 - `messages/send` и `messages/sync`
@@ -112,7 +115,6 @@ curl -X POST http://localhost:8081/api/auth/register-device \
   -H 'Content-Type: application/json' \
   -d '{
     "inviteCode":"PARENT-DEMO",
-    "deviceName":"Pixel 8",
     "platform":"android"
   }'
 ```
