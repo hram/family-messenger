@@ -249,14 +249,23 @@ ${public_host} {
         Cross-Origin-Embedder-Policy require-corp
     }
 
-    @api path /api/* /openapi.json /swagger-ui/*
-    handle @api {
+    handle /api/* {
         reverse_proxy 127.0.0.1:${BACKEND_PORT}
     }
 
-    root * ${INSTALL_ROOT}/web
-    try_files {path} /index.html
-    file_server
+    handle /openapi.json {
+        reverse_proxy 127.0.0.1:${BACKEND_PORT}
+    }
+
+    handle /swagger-ui/* {
+        reverse_proxy 127.0.0.1:${BACKEND_PORT}
+    }
+
+    handle {
+        root * ${INSTALL_ROOT}/web
+        try_files {path} /index.html
+        file_server
+    }
 }
 EOF
 }
