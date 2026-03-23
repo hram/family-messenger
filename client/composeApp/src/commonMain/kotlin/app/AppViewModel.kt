@@ -253,8 +253,11 @@ class AppViewModel(
     fun submitSetup() {
         runBusy {
             val setup = state.value.setup
-            if (setup.masterPassword != setup.masterPasswordConfirm) {
-                error("Master password confirmation does not match")
+            when {
+                setup.masterPassword != setup.masterPasswordConfirm -> error("Master password confirmation does not match")
+                setup.familyName.isBlank() -> error("Family name is required")
+                setup.members.isEmpty() -> error("At least one member is required")
+                setup.members.any { it.displayName.isBlank() } -> error("All members must have a name")
             }
             settingsRepository.updateServerBaseUrl(state.value.onboarding.baseUrl)
             val response = bootstrapSystem(

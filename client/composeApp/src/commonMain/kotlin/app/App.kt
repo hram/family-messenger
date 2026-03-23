@@ -114,7 +114,7 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
                 )
 
                 when {
-                    state.screen == Screen.ONBOARDING -> OnboardingScreen(state, viewModel)
+                    state.screen == Screen.ONBOARDING -> LoginScreen(state, viewModel)
                     state.screen == Screen.SETUP -> SetupScreen(state, viewModel)
                     isWide -> WideLayout(state, viewModel)
                     else -> when (state.screen) {
@@ -273,77 +273,6 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OnboardingScreen(state: AppUiState, viewModel: AppViewModel) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(TgBlue)
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-        ) {
-            Text(
-                "Family Messenger",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            TgTextField(
-                value = state.onboarding.baseUrl,
-                onValueChange = viewModel::updateBaseUrl,
-                label = "Server Base URL",
-                modifier = Modifier.testTag(AppTestTags.OnboardingBaseUrl),
-            )
-            TgTextField(
-                value = state.onboarding.inviteCode,
-                onValueChange = viewModel::updateInviteCode,
-                label = "Invite Code",
-                modifier = Modifier.testTag(AppTestTags.OnboardingInviteCode),
-            )
-
-            Button(
-                onClick = viewModel::submitAuth,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag(AppTestTags.OnboardingSubmit),
-                colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
-                shape = RoundedCornerShape(10.dp),
-            ) {
-                Text(
-                    "Continue",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-
-            Surface(
-                color = Color.White,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text("Platform: ${state.platformName}", fontSize = 13.sp, color = TextSecondary)
-                    Text("Enter your invite code to sign in on this device", fontSize = 13.sp, color = TextSecondary)
-                }
-            }
-        }
-    }
-}
-
 // ── Contacts screen (mobile wrapper) ─────────────────────────────────────────
 @Composable
 private fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
@@ -840,7 +769,7 @@ private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Master password required", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                     Text("Administration is locked until the master password is confirmed.", color = TextSecondary)
-                    PasswordSetupField(
+                    PasswordField(
                         value = state.admin.masterPassword,
                         onValueChange = viewModel::updateAdminMasterPassword,
                         label = "Master Password",

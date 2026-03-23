@@ -295,6 +295,179 @@ object AppIcons {
         }.build()
     }
 
+    val ArrowLeft: ImageVector by lazy {
+        ImageVector.Builder("ArrowLeft", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color(0xFF8A8A8A)),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(19f, 12f)
+                lineTo(5f, 12f)
+                moveTo(11f, 6f)
+                lineTo(5f, 12f)
+                lineTo(11f, 18f)
+            }
+        }.build()
+    }
+
+    val ArrowRight: ImageVector by lazy {
+        ImageVector.Builder("ArrowRight", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(5f, 12f)
+                lineTo(19f, 12f)
+                moveTo(13f, 6f)
+                lineTo(19f, 12f)
+                lineTo(13f, 18f)
+            }
+        }.build()
+    }
+
+    val Warning: ImageVector by lazy {
+        ImageVector.Builder("Warning", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color(0xFF633806)),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(12f, 3f)
+                lineTo(22f, 21f)
+                lineTo(2f, 21f)
+                close()
+                moveTo(12f, 10f)
+                lineTo(12f, 14f)
+                moveTo(12f, 17f)
+                lineTo(12f, 17.5f)
+            }
+        }.build()
+    }
+
+    val Add: ImageVector by lazy {
+        ImageVector.Builder("Add", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color(0xFF2AABEE)),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+            ) {
+                moveTo(12f, 5f)
+                lineTo(12f, 19f)
+                moveTo(5f, 12f)
+                lineTo(19f, 12f)
+            }
+        }.build()
+    }
+
+    val Copy: ImageVector by lazy {
+        ImageVector.Builder("Copy", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color(0xFF8A8A8A)),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(8f, 8f)
+                lineTo(8f, 5f)
+                curveTo(8f, 4.4f, 8.4f, 4f, 9f, 4f)
+                lineTo(19f, 4f)
+                curveTo(19.6f, 4f, 20f, 4.4f, 20f, 5f)
+                lineTo(20f, 15f)
+                curveTo(20f, 15.6f, 19.6f, 16f, 19f, 16f)
+                lineTo(16f, 16f)
+                moveTo(5f, 8f)
+                lineTo(15f, 8f)
+                curveTo(15.6f, 8f, 16f, 8.4f, 16f, 9f)
+                lineTo(16f, 19f)
+                curveTo(16f, 19.6f, 15.6f, 20f, 15f, 20f)
+                lineTo(5f, 20f)
+                curveTo(4.4f, 20f, 4f, 19.6f, 4f, 19f)
+                lineTo(4f, 9f)
+                curveTo(4f, 8.4f, 4.4f, 8f, 5f, 8f)
+                close()
+            }
+        }.build()
+    }
+
+    val QrCode: ImageVector by lazy {
+        ImageVector.Builder("QrCode", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color(0xFF8A8A8A)),
+                pathFillType = PathFillType.NonZero,
+            ) {
+                // top-left block
+                moveTo(3f, 3f)
+                lineTo(10f, 3f)
+                lineTo(10f, 10f)
+                lineTo(3f, 10f)
+                close()
+                moveTo(5f, 5f)
+                lineTo(8f, 5f)
+                lineTo(8f, 8f)
+                lineTo(5f, 8f)
+                close()
+                // top-right block
+                moveTo(14f, 3f)
+                lineTo(21f, 3f)
+                lineTo(21f, 10f)
+                lineTo(14f, 10f)
+                close()
+                moveTo(16f, 5f)
+                lineTo(19f, 5f)
+                lineTo(19f, 8f)
+                lineTo(16f, 8f)
+                close()
+                // bottom-left block
+                moveTo(3f, 14f)
+                lineTo(10f, 14f)
+                lineTo(10f, 21f)
+                lineTo(3f, 21f)
+                close()
+                moveTo(5f, 16f)
+                lineTo(8f, 16f)
+                lineTo(8f, 19f)
+                lineTo(5f, 19f)
+                close()
+                // bottom-right dots
+                moveTo(14f, 14f)
+                lineTo(16f, 14f)
+                lineTo(16f, 16f)
+                lineTo(14f, 16f)
+                close()
+                moveTo(16f, 16f)
+                lineTo(18f, 16f)
+                lineTo(18f, 18f)
+                lineTo(16f, 18f)
+                close()
+                moveTo(18f, 14f)
+                lineTo(21f, 14f)
+                lineTo(21f, 17f)
+                lineTo(18f, 17f)
+                close()
+                moveTo(14f, 18f)
+                lineTo(17f, 18f)
+                lineTo(17f, 21f)
+                lineTo(14f, 21f)
+                close()
+                moveTo(19f, 19f)
+                lineTo(21f, 19f)
+                lineTo(21f, 21f)
+                lineTo(19f, 21f)
+                close()
+            }
+        }.build()
+    }
+
     val DoubleCheck: ImageVector by lazy {
         ImageVector.Builder("DoubleCheck", 24.dp, 24.dp, 24f, 24f).apply {
             path(
