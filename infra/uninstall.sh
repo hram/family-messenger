@@ -20,8 +20,11 @@ if [[ -f "${CONFIG_ROOT}/install.env" ]]; then
 else
   INSTALL_ROOT="${INSTALL_ROOT:-/opt/family-messenger}"
   POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
+  POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger}"
   CADDY_SITE_FILE="${CADDY_SITE_FILE:-/etc/caddy/sites-enabled/family-messenger.caddy}"
 fi
+
+POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger}"
 
 log "Stopping backend service"
 ${SUDO} systemctl disable --now "${SYSTEMD_UNIT_NAME}" >/dev/null 2>&1 || true
@@ -32,7 +35,7 @@ ${SUDO} systemctl restart caddy >/dev/null 2>&1 || true
 
 if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then
   log "Stopping PostgreSQL container"
-  ${SUDO} docker compose -f "${INSTALL_ROOT}/postgres/docker-compose.yml" down -v || true
+  ${SUDO} docker compose -p "${POSTGRES_COMPOSE_PROJECT_NAME}" -f "${INSTALL_ROOT}/postgres/docker-compose.yml" down -v || true
 else
   ${SUDO} docker rm -f "${POSTGRES_CONTAINER_NAME}" >/dev/null 2>&1 || true
 fi

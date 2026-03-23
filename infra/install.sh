@@ -22,6 +22,7 @@ RELEASE_VERSION="${RELEASE_VERSION:-}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-mirror.gcr.io/library/postgres:16-alpine}"
 POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
+POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
 CADDY_SITES_ROOT="${CADDY_SITES_ROOT:-/etc/caddy/sites-enabled}"
 CADDY_SITE_NAME="${CADDY_SITE_NAME:-family-messenger}"
@@ -313,6 +314,7 @@ DB_NAME=${DB_NAME}
 DB_USER=${DB_USER}
 POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
 POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
+POSTGRES_COMPOSE_PROJECT_NAME=${POSTGRES_COMPOSE_PROJECT_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
 WEB_ASSET_NAME=${WEB_ASSET_NAME}
 CADDY_SITES_ROOT=${CADDY_SITES_ROOT}
@@ -386,7 +388,7 @@ main() {
   download_web "${version}"
 
   log "Starting PostgreSQL"
-  ${SUDO} docker compose -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d
+  ${SUDO} docker compose -p "${POSTGRES_COMPOSE_PROJECT_NAME}" -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d
   wait_for_postgres
 
   log "Starting backend service"

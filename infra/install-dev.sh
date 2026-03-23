@@ -13,6 +13,7 @@ export DB_NAME="${DB_NAME:-family_messenger_dev}"
 export DB_USER="${DB_USER:-family_dev}"
 export POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-dev-postgres}"
 export POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_dev_postgres_data}"
+export POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger-dev}"
 export CADDY_SITE_NAME="${CADDY_SITE_NAME:-family-messenger-dev}"
 
 REPO_OWNER="${REPO_OWNER:-hram}"

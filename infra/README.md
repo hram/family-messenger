@@ -66,6 +66,7 @@ infra/uninstall-dev.sh
 - systemd unit: `family-messenger-dev-backend`
 - postgres container: `family-messenger-dev-postgres`
 - postgres volume: `family_messenger_dev_postgres_data`
+- docker compose project: `family-messenger-dev`
 
 Это изолирует dev от prod по:
 

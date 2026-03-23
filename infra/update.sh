@@ -25,6 +25,8 @@ fi
 # shellcheck disable=SC1090
 source "${CONFIG_ROOT}/install.env"
 
+POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger}"
+
 RELEASE_VERSION="${REQUESTED_RELEASE_VERSION}"
 if [[ -z "${RELEASE_VERSION}" ]]; then
   RELEASE_VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
@@ -52,6 +54,9 @@ ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
 rm -f /tmp/family-messenger-web.tar.gz
 
 ${SUDO} sed -i "s/^RELEASE_VERSION=.*/RELEASE_VERSION=${RELEASE_VERSION}/" "${CONFIG_ROOT}/install.env"
+if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then
+  ${SUDO} docker compose -p "${POSTGRES_COMPOSE_PROJECT_NAME}" -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d
+fi
 ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
 ${SUDO} systemctl restart caddy
 
