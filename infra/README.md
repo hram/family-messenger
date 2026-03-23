@@ -74,6 +74,7 @@ infra/uninstall-dev.sh
 - systemd unit
 - каталогам
 - docker container и volume
+- docker compose project
 - базе данных
 
 Важно:
@@ -82,6 +83,19 @@ infra/uninstall-dev.sh
 - dev живёт отдельно на `:9080`
 - оба контура используют один установленный `Caddy`, но у каждого свой site-файл в `/etc/caddy/sites-enabled/`
 - `install.sh` больше не должен перетирать весь `/etc/caddy/Caddyfile`, он добавляет отдельный site-файл для текущего контура
+- изоляция dev/prod критически зависит от разных:
+  - `PUBLIC_PORT`
+  - `BACKEND_PORT`
+  - `DB_PORT`
+  - `INSTALL_ROOT`
+  - `CONFIG_ROOT`
+  - `SYSTEMD_UNIT_NAME`
+  - `POSTGRES_CONTAINER_NAME`
+  - `POSTGRES_VOLUME_NAME`
+  - `POSTGRES_COMPOSE_PROJECT_NAME`
+- `HTTP 200` на `/api/health` не гарантирует, что production-данные не пострадали
+- после рискованных infra-операций проверяй не только health, но и счётчики таблиц в prod БД
+- без Android dev flavor нельзя безопасно путать prod APK и dev APK на одних и тех же устройствах
 
 Пример dev-установки на сервере:
 
@@ -100,6 +114,59 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/up
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall-dev.sh | bash
 ```
+
+## Runbook Для Dev Контура
+
+### Поставить dev рядом с prod
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install-dev.sh | bash
+```
+
+### Обновить только dev
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/update-dev.sh | bash
+```
+
+### Сбросить dev до чистого старта
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall-dev.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install-dev.sh | bash
+```
+
+### Удалить только dev
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall-dev.sh | bash
+```
+
+### Быстрая проверка, что живы оба контура
+
+```bash
+curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:9080/api/health
+systemctl is-active family-messenger-backend
+systemctl is-active family-messenger-dev-backend
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+```
+
+### Проверка, что prod-данные не пострадали
+
+На сервере:
+
+```bash
+docker exec family-messenger-postgres \
+  psql -U family -d family_messenger -Atc \
+  "select count(*) from families; select count(*) from users; select count(*) from messages;"
+```
+
+Если production уже настроен и используется, одних `health` checks недостаточно. Нужны хотя бы счётчики:
+
+- `families`
+- `users`
+- `messages`
 
 Если нужен не `9080`, можно переопределить переменные окружения перед запуском:
 

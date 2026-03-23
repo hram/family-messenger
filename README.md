@@ -84,3 +84,31 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/un
 ```
 
 Подробности и ручной fallback описаны в [infra/README.md](infra/README.md).
+
+## Prod И Dev На Одном Сервере
+
+Если production уже используется семьёй, dev-контур нужно держать рядом, но строго отдельно.
+
+Базовые правила:
+
+- prod URL: `http://<server-ip>:8080`
+- dev URL: `http://<server-ip>:9080`
+- prod и dev должны иметь разные:
+  - порты
+  - `INSTALL_ROOT`
+  - `CONFIG_ROOT`
+  - `SYSTEMD_UNIT_NAME`
+  - `POSTGRES_CONTAINER_NAME`
+  - `POSTGRES_VOLUME_NAME`
+  - `POSTGRES_COMPOSE_PROJECT_NAME`
+
+В этом репозитории для этого есть:
+
+- `infra/install.sh`, `infra/update.sh`, `infra/uninstall.sh` для prod
+- `infra/install-dev.sh`, `infra/update-dev.sh`, `infra/uninstall-dev.sh` для dev
+
+Важно:
+
+- `200 OK` на `/api/health` означает, что backend отвечает, но не доказывает, что production-данные целы
+- после любых операций с dev-контуром, если есть сомнение, нужно дополнительно проверить счётчики prod-данных в БД
+- без отдельного Android dev flavor dev APK нельзя считать безопасной заменой prod APK на тех же устройствах
