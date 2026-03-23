@@ -72,7 +72,7 @@ class DesktopAuthSwitchE2eTest {
         rule.onNodeWithTag(contactRowTag(0)).performClick()
         sendMessage("family hello from child")
 
-        rule.onNodeWithText("Parent").performClick()
+        rule.onNodeWithTag(contactRowTag(1)).performClick()
         sendMessage("direct hello from child")
 
         logoutThroughUi()
@@ -85,7 +85,7 @@ class DesktopAuthSwitchE2eTest {
         rule.waitForText("family hello from child")
         rule.onNodeWithText("direct hello from child").assertDoesNotExist()
 
-        rule.onNodeWithText("Child").performClick()
+        rule.onNodeWithTag(contactRowTag(2)).performClick()
         rule.waitForText("direct hello from child")
         rule.onNodeWithText("family hello from child").assertDoesNotExist()
     }
