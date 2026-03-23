@@ -44,6 +44,68 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/up
 curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall.sh | bash
 ```
 
+## Dev Контур Рядом С Prod
+
+Если production уже живёт на сервере и его нельзя трогать, dev-контур нужно поднимать как отдельную установку с другими именами, портами и базой.
+
+Для этого в репозитории есть отдельные обёртки:
+
+```bash
+infra/install-dev.sh
+infra/update-dev.sh
+infra/uninstall-dev.sh
+```
+
+По умолчанию dev использует:
+
+- web: `http://<server-ip>:9080`
+- backend: `127.0.0.1:9081`
+- postgres: `127.0.0.1:55432`
+- install root: `/opt/family-messenger-dev`
+- config root: `/etc/family-messenger-dev`
+- systemd unit: `family-messenger-dev-backend`
+- postgres container: `family-messenger-dev-postgres`
+- postgres volume: `family_messenger_dev_postgres_data`
+
+Это изолирует dev от prod по:
+
+- портам
+- systemd unit
+- каталогам
+- docker container и volume
+- базе данных
+
+Важно:
+
+- prod остаётся на `:8080`
+- dev живёт отдельно на `:9080`
+- оба контура используют один установленный `Caddy`, но у каждого свой site-файл в `/etc/caddy/sites-enabled/`
+- `install.sh` больше не должен перетирать весь `/etc/caddy/Caddyfile`, он добавляет отдельный site-файл для текущего контура
+
+Пример dev-установки на сервере:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install-dev.sh | bash
+```
+
+Пример dev-обновления:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/update-dev.sh | bash
+```
+
+Пример dev-удаления:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall-dev.sh | bash
+```
+
+Если нужен не `9080`, можно переопределить переменные окружения перед запуском:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install-dev.sh | PUBLIC_PORT=10080 BACKEND_PORT=10081 DB_PORT=55433 bash
+```
+
 Если нужно поставить конкретную версию release:
 
 ```bash

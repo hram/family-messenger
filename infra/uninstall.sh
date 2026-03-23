@@ -20,13 +20,14 @@ if [[ -f "${CONFIG_ROOT}/install.env" ]]; then
 else
   INSTALL_ROOT="${INSTALL_ROOT:-/opt/family-messenger}"
   POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
+  CADDY_SITE_FILE="${CADDY_SITE_FILE:-/etc/caddy/sites-enabled/family-messenger.caddy}"
 fi
 
 log "Stopping backend service"
 ${SUDO} systemctl disable --now "${SYSTEMD_UNIT_NAME}" >/dev/null 2>&1 || true
 ${SUDO} rm -f "/etc/systemd/system/${SYSTEMD_UNIT_NAME}.service"
 ${SUDO} systemctl daemon-reload
-${SUDO} rm -f /etc/caddy/Caddyfile
+${SUDO} rm -f "${CADDY_SITE_FILE}"
 ${SUDO} systemctl restart caddy >/dev/null 2>&1 || true
 
 if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then

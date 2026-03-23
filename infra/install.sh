@@ -23,6 +23,9 @@ POSTGRES_IMAGE="${POSTGRES_IMAGE:-mirror.gcr.io/library/postgres:16-alpine}"
 POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
+CADDY_SITES_ROOT="${CADDY_SITES_ROOT:-/etc/caddy/sites-enabled}"
+CADDY_SITE_NAME="${CADDY_SITE_NAME:-family-messenger}"
+CADDY_SITE_FILE="${CADDY_SITE_FILE:-${CADDY_SITES_ROOT}/${CADDY_SITE_NAME}.caddy}"
 
 log() {
   printf '[family-messenger] %s\n' "$*"
@@ -121,6 +124,23 @@ install_caddy() {
   ${SUDO} systemctl enable --now caddy
 }
 
+ensure_caddy_base_config() {
+  ${SUDO} mkdir -p "${CADDY_SITES_ROOT}"
+  if [[ ! -f /etc/caddy/Caddyfile ]]; then
+    cat <<EOF | ${SUDO} tee /etc/caddy/Caddyfile >/dev/null
+{
+}
+
+import ${CADDY_SITES_ROOT}/*.caddy
+EOF
+    return
+  fi
+
+  if ! ${SUDO} grep -Fq "import ${CADDY_SITES_ROOT}/*.caddy" /etc/caddy/Caddyfile; then
+    printf '\nimport %s/*.caddy\n' "${CADDY_SITES_ROOT}" | ${SUDO} tee -a /etc/caddy/Caddyfile >/dev/null
+  fi
+}
+
 ensure_user_and_dirs() {
   if ! getent group "${APP_GROUP}" >/dev/null 2>&1; then
     ${SUDO} groupadd --system "${APP_GROUP}"
@@ -214,6 +234,10 @@ download_web() {
   ${SUDO} rm -rf "${INSTALL_ROOT}/web"
   ${SUDO} mkdir -p "${INSTALL_ROOT}/web"
   ${SUDO} tar -xzf /tmp/family-messenger-web.tar.gz -C "${INSTALL_ROOT}/web"
+  if command -v gzip >/dev/null 2>&1; then
+    ${SUDO} find "${INSTALL_ROOT}/web" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.wasm' -o -name '*.map' \) \
+      -exec gzip -kf -9 {} \;
+  fi
   ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
   rm -f /tmp/family-messenger-web.tar.gz
 }
@@ -238,7 +262,7 @@ EOF
 }
 
 write_caddy_config() {
-  cat <<EOF | ${SUDO} tee /etc/caddy/Caddyfile >/dev/null
+  cat <<EOF | ${SUDO} tee "${CADDY_SITE_FILE}" >/dev/null
 :${PUBLIC_PORT} {
     handle /api/* {
         reverse_proxy 127.0.0.1:${BACKEND_PORT}
@@ -252,10 +276,19 @@ write_caddy_config() {
         reverse_proxy 127.0.0.1:${BACKEND_PORT}
     }
 
+    encode zstd gzip
+
+    @staticAssets {
+        path *.js *.mjs *.wasm *.css *.map
+    }
+    header @staticAssets Cache-Control "public, max-age=31536000, immutable"
+
     handle {
         root * ${INSTALL_ROOT}/web
         try_files {path} /index.html
-        file_server
+        file_server {
+            precompressed gzip
+        }
     }
 }
 EOF
@@ -282,6 +315,9 @@ POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
 POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
 WEB_ASSET_NAME=${WEB_ASSET_NAME}
+CADDY_SITES_ROOT=${CADDY_SITES_ROOT}
+CADDY_SITE_NAME=${CADDY_SITE_NAME}
+CADDY_SITE_FILE=${CADDY_SITE_FILE}
 PUBLIC_IP=${public_ip}
 APP_BASE_URL=http://${public_ip}:${PUBLIC_PORT}
 EOF
@@ -339,6 +375,7 @@ main() {
   install_docker
   install_java
   install_caddy
+  ensure_caddy_base_config
   ensure_user_and_dirs
   write_schema "${version}"
   write_postgres_compose "${db_password}"
