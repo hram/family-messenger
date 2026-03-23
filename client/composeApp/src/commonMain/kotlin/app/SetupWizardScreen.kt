@@ -615,7 +615,7 @@ private fun InviteCard(invite: SetupInviteSummary) {
 }
 
 @Composable
-private fun InviteActionButton(
+internal fun InviteActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
@@ -630,7 +630,7 @@ private fun InviteActionButton(
             .clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {

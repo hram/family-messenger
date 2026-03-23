@@ -826,19 +826,21 @@ private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                         fontSize = 12.sp,
                                     )
                                 }
-                                IconButton(onClick = { showQr = true }) {
-                                    Icon(
-                                        imageVector = AppIcons.QrCode,
-                                        contentDescription = "QR-код",
-                                        tint = TgBlue,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                TextButton(
-                                    onClick = { viewModel.removeAdminMember(member.inviteCode) },
-                                    modifier = Modifier.testTag(AppTestTags.AdminMemberRemovePrefix + member.inviteCode),
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
-                                    Text("Remove", color = Color(0xFFFF3B30))
+                                    InviteActionButton(
+                                        icon = AppIcons.QrCode,
+                                        label = "QR-код",
+                                        onClick = { showQr = true },
+                                    )
+                                    TextButton(
+                                        onClick = { viewModel.removeAdminMember(member.inviteCode) },
+                                        modifier = Modifier.testTag(AppTestTags.AdminMemberRemovePrefix + member.inviteCode),
+                                    ) {
+                                        Text("Remove", color = Color(0xFFFF3B30))
+                                    }
                                 }
                             }
                             HorizontalDivider(color = Divider, thickness = 0.5.dp)
