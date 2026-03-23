@@ -307,6 +307,32 @@ class AppViewModel(
         }
     }
 
+    fun submitScannedAuth(baseUrl: String, inviteCode: String) {
+        mutate {
+            copy(
+                onboarding = onboarding.copy(
+                    baseUrl = baseUrl,
+                    inviteCode = inviteCode,
+                ),
+                errorMessage = null,
+            )
+        }
+        runBusy {
+            settingsRepository.updateServerBaseUrl(baseUrl)
+            val session = login(inviteCode)
+            syncEngine.start(scope)
+            val contacts = loadContacts()
+            mutableState.value = mutableState.value.copy(
+                screen = Screen.CONTACTS,
+                currentUser = session.auth.user,
+                contacts = contacts,
+                unreadCounts = emptyMap(),
+                errorMessage = null,
+                statusMessage = "Сессия активна",
+            )
+        }
+    }
+
     fun refreshContacts() {
         runBusy {
             val contacts = loadContacts()

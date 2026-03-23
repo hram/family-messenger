@@ -506,7 +506,7 @@ private fun StepInvites(state: AppUiState, viewModel: AppViewModel) {
         }
 
         state.setup.generatedInvites.forEach { invite ->
-            InviteCard(invite = invite)
+            InviteCard(invite = invite, serverUrl = state.onboarding.baseUrl)
         }
 
         SetupPrimaryButton(
@@ -518,11 +518,12 @@ private fun StepInvites(state: AppUiState, viewModel: AppViewModel) {
 }
 
 @Composable
-private fun InviteCard(invite: SetupInviteSummary) {
+private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
     var showQr by remember { mutableStateOf(false) }
     if (showQr) {
         QrCodeDialog(
             inviteCode = invite.inviteCode,
+            serverUrl = serverUrl,
             displayName = invite.displayName,
             onDismiss = { showQr = false },
         )

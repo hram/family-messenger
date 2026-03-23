@@ -44,6 +44,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 private val LoginBlue        = Color(0xFF2AABEE)
@@ -86,9 +89,16 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
             onResult = { scanned ->
                 if (scanned != null) {
                     val code = extractCodeFromQr(scanned)
-                    val url  = extractUrlFromQr(scanned)
-                    if (code != null) viewModel.updateInviteCode(code)
-                    if (url != null) viewModel.updateBaseUrl(url)
+                    val url = extractUrlFromQr(scanned) ?: state.onboarding.baseUrl
+                    if (code != null && url.isNotBlank()) {
+                        viewModel.submitScannedAuth(
+                            baseUrl = url,
+                            inviteCode = code,
+                        )
+                    } else {
+                        if (code != null) viewModel.updateInviteCode(code)
+                        if (url.isNotBlank()) viewModel.updateBaseUrl(url)
+                    }
                 }
                 showQrScanner = false
             },
@@ -278,13 +288,27 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Извлекает код из QR deeplink: familymessenger://join?code=XXXX-XXXX&url=... */
+/** Извлекает код из QR payload или legacy deeplink. */
 private fun extractCodeFromQr(qr: String): String? =
-    Regex("""[?&]code=([A-Z0-9]{4}-[A-Z0-9]{4})""").find(qr)?.groupValues?.get(1)
+    parseInviteQrPayload(qr)?.code
+        ?: Regex("""[?&]code=([^&]+)""").find(qr)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
 
-/** Извлекает адрес сервера из QR deeplink */
+/** Извлекает адрес сервера из QR payload или legacy deeplink. */
 private fun extractUrlFromQr(qr: String): String? =
-    Regex("""[?&]url=([^&]+)""").find(qr)?.groupValues?.get(1)
+    parseInviteQrPayload(qr)?.url
+        ?: Regex("""[?&]url=([^&]+)""").find(qr)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+
+private data class InviteQrPayload(
+    val code: String,
+    val url: String,
+)
+
+private fun parseInviteQrPayload(qr: String): InviteQrPayload? = runCatching {
+    val json = Json.parseToJsonElement(qr) as? JsonObject ?: return null
+    val code = json["code"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: return null
+    val url = json["url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: return null
+    InviteQrPayload(code = code, url = url)
+}.getOrNull()
 
 
 @Composable
@@ -296,14 +320,12 @@ private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
 
 // ── QR Scanner stub (реализуется на Android/iOS) ─────────────────────────────
 
-/** Возвращает true если платформа поддерживает сканирование QR (Android, iOS). */
-fun isQrScannerSupported(): Boolean = false
+/** Возвращает true если платформа поддерживает сканирование QR. */
+expect fun isQrScannerSupported(): Boolean
 
-/** Заглушка листа сканера QR. Реализуется платформенно при добавлении камеры. */
+/** Платформенный экран/лист сканирования QR. */
 @Composable
-fun QrScannerSheet(
+expect fun QrScannerSheet(
     onResult: (String?) -> Unit,
     onDismiss: () -> Unit,
-) {
-    // TODO: platform implementation
-}
+)

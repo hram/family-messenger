@@ -799,6 +799,7 @@ private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                         if (showQr) {
                             QrCodeDialog(
                                 inviteCode = member.inviteCode,
+                                serverUrl = state.onboarding.baseUrl,
                                 displayName = member.displayName,
                                 onDismiss = { showQr = false },
                             )

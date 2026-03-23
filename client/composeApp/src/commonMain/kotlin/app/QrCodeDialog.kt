@@ -31,10 +31,12 @@ private val QrTextSec    = Color(0xFF8A8A8A)
 @Composable
 fun QrCodeDialog(
     inviteCode: String,
+    serverUrl: String,
     displayName: String,
     onDismiss: () -> Unit,
 ) {
-    val painter = rememberQrCodePainter(inviteCode)
+    val qrPayload = """{"code":"${inviteCode.jsonEscape()}","url":"${serverUrl.jsonEscape()}"}"""
+    val painter = rememberQrCodePainter(qrPayload)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -80,7 +82,7 @@ fun QrCodeDialog(
                     letterSpacing = 2.sp,
                 )
                 Text(
-                    "Отсканируйте QR или введите код вручную",
+                    "Отсканируйте QR или введите код и адрес сервера вручную",
                     fontSize = 12.sp,
                     color = QrTextSec,
                 )
@@ -88,4 +90,17 @@ fun QrCodeDialog(
         },
         shape = RoundedCornerShape(16.dp),
     )
+}
+
+private fun String.jsonEscape(): String = buildString(length + 8) {
+    for (ch in this@jsonEscape) {
+        when (ch) {
+            '\\' -> append("\\\\")
+            '"' -> append("\\\"")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '\t' -> append("\\t")
+            else -> append(ch)
+        }
+    }
 }
