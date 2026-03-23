@@ -1,40 +1,111 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository currently stores the project brief as Markdown prompts in [`promts/`](./promts). The main flow is:
+This repository is no longer prompt-only. The live source tree is:
 
-- `promts/prompt.md`: master product and architecture brief
-- `promts/step_1.md` to `promts/step_5.md`: staged implementation and review tasks
+- `backend/`: Ktor backend, Exposed repositories, SQL schema, integration tests
+- `client/composeApp/`: Compose Multiplatform client for Android, Desktop, iOS, and Web/JS
+- `shared-contract/`: shared DTO/API contract module used by backend and client
+- `infra/`: install/update/uninstall scripts, local Docker Compose, `systemd` unit template
+- `docs/`: cross-cutting architecture and operational docs
+- `promts/`: original product and staged implementation prompts kept as reference
 
-There is no application source tree yet. When adding the actual project, follow the structure described in the prompts: `backend/`, `client/`, `shared-contract/`, `infra/`, plus top-level documentation such as `README.md` and `docs/`.
+Key deployment docs:
+
+- `README.md`: top-level project and deployment overview
+- `infra/README.md`: infra scripts and server layout
+- `docs/DEPLOY_RUNBOOK.md`: source of truth for manual SSH deploy workflow
 
 ## Build, Test, and Development Commands
-No build system is checked in yet. For now, contributors mainly inspect and edit the prompt set:
+Run commands from the repository root unless noted otherwise:
 
-- `rg --files`: list tracked files quickly
-- `sed -n '1,80p' promts/step_1.md`: preview a prompt section
-- `markdownlint AGENTS.md`: optional Markdown validation if available locally
+- `./gradlew :backend:build`: backend build
+- `./gradlew :backend:test`: backend tests
+- `./gradlew :backend:buildFatJar`: build deployable backend jar
+- `./gradlew :client:composeApp:compileKotlinJs`: compile web client
+- `./gradlew :client:composeApp:jsBrowserProductionWebpack`: build production web bundle
+- `./gradlew :client:composeApp:assembleDebug`: build Android debug APK
+- `docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build`: local infra run
+- `rg --files`: fast file listing
+- `rg -n "<pattern>" .`: fast code/document search
 
-When introducing code, document the canonical commands in `README.md` and keep them runnable from the repository root.
+Important deploy artifacts:
+
+- backend jar: `backend/build/libs/family-messenger-backend-all.jar`
+- web bundle dir: `client/composeApp/build/dist/js/productionExecutable/`
+- Android debug APK: `client/composeApp/build/outputs/apk/debug/composeApp-debug.apk`
+
+## Deployment Memory
+Before any server deploy, read `docs/DEPLOY_RUNBOOK.md`.
+
+Operational rules already established in this repo:
+
+- there are two server environments: `prod` and `dev`
+- deploys are performed manually over `ssh`
+- no `git pull` and no GitHub-based server deploy flow should be assumed for the active family server workflow
+- local machine builds artifacts first, then uploads them to the target server
+- prod and dev must stay isolated by install roots, config roots, ports, systemd units, postgres containers, volumes, and compose project names
+
+Default server layout from infra scripts:
+
+- prod install root: `/opt/family-messenger`
+- prod config root: `/etc/family-messenger`
+- prod systemd unit: `family-messenger-backend`
+- dev install root: `/opt/family-messenger-dev`
+- dev config root: `/etc/family-messenger-dev`
+- dev systemd unit: `family-messenger-dev-backend`
+- prod public URL default: `http://<server>:8080`
+- dev public URL default: `http://<server>:9080`
+
+If a future session needs to deploy and the concrete SSH host/user/path are missing, do not invent them. Check `docs/DEPLOY_RUNBOOK.md` first, then ask the user only for the missing server-specific values.
 
 ## Coding Style & Naming Conventions
 Use clear, task-focused Markdown with short sections and numbered execution steps where helpful. Keep filenames lowercase with underscores for staged prompts, matching the existing pattern such as `step_3.md`.
 
-If you add source modules, keep directory names explicit and stable (`shared-contract`, not abbreviations), and prefer language-standard formatters and linters. Do not commit IDE-specific changes from `.idea/` unless they are intentionally shared.
+For source modules:
+
+- keep directory names explicit and stable
+- prefer language-standard formatters and linters
+- avoid committing generated artifacts under `build/`
+- do not commit IDE-specific `.idea/` changes unless intentionally shared
 
 ## Testing Guidelines
-There is no automated test suite yet. For prompt or documentation changes, review for:
+The repository has automated tests now.
 
-- internal consistency across `prompt.md` and `step_*.md`
-- stable endpoint names, module names, and platform targets
-- absence of contradictory requirements between steps
+For backend changes:
 
-If you add executable code, add matching tests in the same change and document how to run them from the root.
+- run `./gradlew :backend:test`
+
+For client or cross-module changes:
+
+- run the narrowest relevant Gradle compile/test task you can justify
+- document any gaps if full verification is too expensive
+
+For documentation/deploy changes:
+
+- verify command paths, artifact names, systemd unit names, and endpoint URLs against the current repo
+- keep `README.md`, `infra/README.md`, and `docs/DEPLOY_RUNBOOK.md` consistent
 
 ## Commit & Pull Request Guidelines
-The Git history is currently empty, so no repository-specific commit convention exists yet. Use concise, imperative commit messages such as `Add deployment prompt refinements` or `Create shared-contract skeleton brief`.
+Use concise, imperative commit messages such as:
 
-Pull requests should include a short summary, affected files, rationale for any prompt or architecture changes, and sample output or screenshots when rendering/documentation behavior changes materially.
+- `Document manual SSH deploy workflow`
+- `Update dev environment runbook`
+- `Fix backend auth route validation`
+
+Pull requests should include:
+
+- short summary
+- affected files
+- rationale for architecture or deploy changes
+- verification performed
+- screenshots only when UI changes materially
 
 ## Configuration & Repository Hygiene
-Respect `.dockerignore`: do not commit generated `build/`, `.gradle/`, local `client/` artifacts, or editor clutter. Keep repository-level guidance current as soon as real modules, tooling, or CI are added.
+Respect `.dockerignore` and do not commit generated `build/`, `.gradle/`, local artifacts, or editor clutter.
+
+If deployment behavior changes, update the operational docs in the same change:
+
+- `README.md`
+- `infra/README.md`
+- `docs/DEPLOY_RUNBOOK.md`

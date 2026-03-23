@@ -31,6 +31,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 docker compose up -d --build          # Build and start backend + postgres
 ```
 
+## Deploy Memory
+
+Read `docs/DEPLOY_RUNBOOK.md` before any server deploy.
+
+Established operational rules:
+
+- there are two server environments: `prod` and `dev`
+- the active family-server workflow is manual deploy over `ssh`
+- do not assume `git pull` on the server
+- do not build the project on the server
+- build locally, upload artifacts, restart only the target contour
+- default contours are `/opt/family-messenger` + `family-messenger-backend` for prod and `/opt/family-messenger-dev` + `family-messenger-dev-backend` for dev
+
 ## Architecture
 
 ### Module Structure

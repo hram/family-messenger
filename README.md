@@ -38,6 +38,7 @@ See [backend README](backend/README.md), [backend API notes](backend/docs/api.md
 
 The practical next steps after the current implementation pass are tracked in [TODO.md](TODO.md).
 Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
+Операционный контекст по ручному SSH-деплою хранится в [docs/DEPLOY_RUNBOOK.md](docs/DEPLOY_RUNBOOK.md).
 
 Для самой простой пользовательской инструкции смотри [DEPLOY_FOR_FAMILY.md](DEPLOY_FOR_FAMILY.md).
 Для подробной пошаговой инструкции смотри [DEPLOY_STEP_BY_STEP_FOR_FAMILY.md](DEPLOY_STEP_BY_STEP_FOR_FAMILY.md).
@@ -106,6 +107,11 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/un
 
 - `infra/install.sh`, `infra/update.sh`, `infra/uninstall.sh` для prod
 - `infra/install-dev.sh`, `infra/update-dev.sh`, `infra/uninstall-dev.sh` для dev
+
+Для текущего ручного процесса семейного сервера дополнительно действует правило:
+
+- основная операционная схема деплоя не через `git pull` на сервере, а через локальную сборку и загрузку артефактов по `ssh`
+- перед любым таким деплоем нужно читать [docs/DEPLOY_RUNBOOK.md](docs/DEPLOY_RUNBOOK.md)
 
 Важно:
 
