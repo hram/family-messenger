@@ -52,7 +52,6 @@ class UnreadBadgeViewModelTest {
         val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
         val setupRepository = SetupRepository(apiClient)
         val adminRepository = AdminRepository(apiClient)
-        val clientDiagnosticsRepository = ClientDiagnosticsRepository(apiClient, localDatabase, sessionStore)
         val syncEngine = SyncEngine(
             sessionStore = sessionStore,
             settingsRepository = settingsRepository,
@@ -61,8 +60,6 @@ class UnreadBadgeViewModelTest {
             presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
             deviceRepository = DeviceRepository(apiClient),
             notificationService = NoOpNotificationService,
-            localDatabase = localDatabase,
-            clientDiagnosticsRepository = clientDiagnosticsRepository,
         )
         val viewModel = AppViewModel(
             platformInfo = platformInfo(),
@@ -73,7 +70,7 @@ class UnreadBadgeViewModelTest {
             messagesRepository = messagesRepository,
             sessionRepository = sessionRepository,
             syncEngine = syncEngine,
-            login = LoginUseCase(sessionRepository, syncEngine, clientDiagnosticsRepository),
+            login = LoginUseCase(sessionRepository, syncEngine),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
             bootstrapSystem = BootstrapSystemUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
@@ -130,7 +127,6 @@ class UnreadBadgeViewModelTest {
             }
             assertTrue(viewModel.state.value.messages.any { it.id == incomingMessage.id })
         } finally {
-            clientDiagnosticsRepository.close()
             viewModel.close()
         }
     }
@@ -161,7 +157,6 @@ class UnreadBadgeViewModelTest {
         val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
         val setupRepository = SetupRepository(apiClient)
         val adminRepository = AdminRepository(apiClient)
-        val clientDiagnosticsRepository = ClientDiagnosticsRepository(apiClient, localDatabase, sessionStore)
         val syncEngine = SyncEngine(
             sessionStore = sessionStore,
             settingsRepository = settingsRepository,
@@ -170,8 +165,6 @@ class UnreadBadgeViewModelTest {
             presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
             deviceRepository = DeviceRepository(apiClient),
             notificationService = NoOpNotificationService,
-            localDatabase = localDatabase,
-            clientDiagnosticsRepository = clientDiagnosticsRepository,
         )
         val viewModel = AppViewModel(
             platformInfo = platformInfo(),
@@ -182,7 +175,7 @@ class UnreadBadgeViewModelTest {
             messagesRepository = messagesRepository,
             sessionRepository = sessionRepository,
             syncEngine = syncEngine,
-            login = LoginUseCase(sessionRepository, syncEngine, clientDiagnosticsRepository),
+            login = LoginUseCase(sessionRepository, syncEngine),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
             bootstrapSystem = BootstrapSystemUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
@@ -240,7 +233,6 @@ class UnreadBadgeViewModelTest {
             }
             assertTrue(viewModel.state.value.messages.any { it.id == incomingFamilyMessage.id })
         } finally {
-            clientDiagnosticsRepository.close()
             viewModel.close()
         }
     }
@@ -255,7 +247,6 @@ class UnreadBadgeViewModelTest {
                 "/api/setup/status" -> respondJson(ApiResponse(success = true, data = SetupStatusResponse(initialized = true)))
                 "/api/messages/mark-delivered" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
                 "/api/messages/mark-read" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
-                "/api/client-logs" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
                 "/api/messages/sync" -> respondJson(ApiResponse(success = true, data = com.familymessenger.contract.SyncPayload(0, emptyList(), emptyList(), emptyList())))
                 "/api/profile/me" -> respondJson(ApiResponse(success = true, data = ProfileResponse(user = currentUser, family = family)))
                 "/api/contacts" -> respondJson(ApiResponse(success = true, data = ContactsResponse(contacts = contacts)))

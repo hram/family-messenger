@@ -38,10 +38,6 @@ class AppViewModel(
     private val sendQuickActionUseCase: SendQuickActionUseCase,
     private val shareLocationUseCase: ShareLocationUseCase,
 ) {
-    private companion object {
-        const val LOG_TAG_UNREAD = "FamilyMessengerUnread"
-    }
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutableState = MutableStateFlow(
         AppUiState(
@@ -74,12 +70,6 @@ class AppViewModel(
                         .eachCount()
                 } else {
                     emptyMap()
-                }
-                if (unreadCounts.isNotEmpty() || snapshot.lastReadAtByChat.isNotEmpty()) {
-                    clientDiagnosticsInfo(
-                        LOG_TAG_UNREAD,
-                        "snapshot currentUserId=$currentUserId selectedContactId=$selectedContactId unreadCounts=$unreadCounts lastReadAtByChat=${snapshot.lastReadAtByChat}",
-                    )
                 }
                 mutableState.value = mutableState.value.copy(
                     screen = if (selectedContact == null && mutableState.value.screen == Screen.CHAT) Screen.CONTACTS else mutableState.value.screen,
