@@ -13,6 +13,7 @@ logback = "1.5.12"
 postgres = "42.7.4"
 smiley-openapi = "5.0.0"
 jbcrypt = "0.4"
+qrose = "1.0.1"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.3" }
@@ -52,6 +53,7 @@ ktor-swagger-ui = { module = "io.github.smiley4:ktor-swagger-ui", version.ref = 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
+qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }

@@ -795,6 +795,14 @@ private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                     Text("No family members yet", color = TextSecondary)
                 } else {
                     state.admin.members.forEach { member ->
+                        var showQr by remember { mutableStateOf(false) }
+                        if (showQr) {
+                            QrCodeDialog(
+                                inviteCode = member.inviteCode,
+                                displayName = member.displayName,
+                                onDismiss = { showQr = false },
+                            )
+                        }
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -816,6 +824,14 @@ private fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                         },
                                         color = TextSecondary,
                                         fontSize = 12.sp,
+                                    )
+                                }
+                                IconButton(onClick = { showQr = true }) {
+                                    Icon(
+                                        imageVector = AppIcons.QrCode,
+                                        contentDescription = "QR-код",
+                                        tint = TgBlue,
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
                                 TextButton(

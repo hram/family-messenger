@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +29,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,7 +51,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
 
 // ── Palette (shared with App.kt) ─────────────────────────────────────────────
@@ -138,7 +138,6 @@ private fun StepProgressBar(currentStep: Int) {
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = if (isActive) Color.White else TextSecondary,
-                        lineHeight = 12.sp,
                     )
                 }
             }
@@ -231,11 +230,10 @@ private fun StepPassword(state: AppUiState, viewModel: AppViewModel) {
         val canProceed = state.setup.masterPassword.length >= 8 &&
                 state.setup.masterPassword == state.setup.masterPasswordConfirm
         SetupPrimaryButton(
-            text = "Далее",
+            text = "Далее →",
             onClick = viewModel::proceedFromSetupPasswordStep,
             enabled = canProceed,
             modifier = Modifier.testTag(AppTestTags.SetupNext),
-            showArrow = true,
         )
     }
 }
@@ -301,22 +299,16 @@ private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
         }
 
         // Nav buttons
-        val canCreate = state.setup.familyName.isNotBlank() &&
-                state.setup.members.isNotEmpty() &&
-                state.setup.members.all { it.displayName.isNotBlank() }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SetupSecondaryButton(
-                text = "Назад",
+                text = "← Назад",
                 onClick = { viewModel.goToSetupStep(1) },
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupBack),
-                showBackArrow = true,
             )
             SetupPrimaryButton(
-                text = "Создать",
+                text = "Создать →",
                 onClick = viewModel::submitSetup,
-                enabled = canCreate,
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupSubmit),
-                showArrow = true,
             )
         }
     }
@@ -324,7 +316,7 @@ private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
 
 @Composable
 private fun MemberCard(
-    member: SetupMemberInputState,
+    member: SetupMember,
     index: Int,
     showRemove: Boolean,
     onNameChange: (String) -> Unit,
@@ -518,15 +510,7 @@ private fun StepInvites(state: AppUiState, viewModel: AppViewModel) {
 }
 
 @Composable
-private fun InviteCard(invite: SetupInviteSummary) {
-    var showQr by remember { mutableStateOf(false) }
-    if (showQr) {
-        QrCodeDialog(
-            inviteCode = invite.inviteCode,
-            displayName = invite.displayName,
-            onDismiss = { showQr = false },
-        )
-    }
+private fun InviteCard(invite: GeneratedInvite) {
     Surface(
         color = Color.White,
         shape = RoundedCornerShape(12.dp),
@@ -607,7 +591,7 @@ private fun InviteCard(invite: SetupInviteSummary) {
                     icon = AppIcons.QrCode,
                     label = "QR-код",
                     modifier = Modifier.weight(1f),
-                    onClick = { showQr = true },
+                    onClick = { /* TODO: show QR dialog for invite */ },
                 )
             }
         }
@@ -648,7 +632,7 @@ private fun InviteActionButton(
 // ── Shared small components ───────────────────────────────────────────────────
 
 @Composable
-private fun SetupCard(content: @Composable ColumnScope.() -> Unit) {
+private fun SetupCard(content: @Composable Column.() -> Unit) {
     Surface(
         color = Color.White,
         shape = RoundedCornerShape(16.dp),
@@ -795,7 +779,6 @@ private fun SetupPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    showArrow: Boolean = false,
 ) {
     Button(
         onClick = onClick,
@@ -810,14 +793,6 @@ private fun SetupPrimaryButton(
         ),
     ) {
         Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        if (showArrow) {
-            Spacer(Modifier.width(6.dp))
-            Icon(
-                imageVector = AppIcons.ArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-        }
     }
 }
 
@@ -826,7 +801,6 @@ private fun SetupSecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showBackArrow: Boolean = false,
 ) {
     Button(
         onClick = onClick,
@@ -841,14 +815,6 @@ private fun SetupSecondaryButton(
         border = androidx.compose.foundation.BorderStroke(0.5.dp, CardBorder),
         elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
     ) {
-        if (showBackArrow) {
-            Icon(
-                imageVector = AppIcons.ArrowLeft,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-        }
         Text(text, fontSize = 15.sp)
     }
 }
