@@ -116,7 +116,7 @@ class MessageService(
         if (sinceId < 0) {
             throw ValidationException("since_id must be >= 0")
         }
-        return repository.sync(principal.familyId, sinceId)
+        return repository.sync(principal, sinceId)
     }
 
     suspend fun markDelivered(principal: SessionPrincipal, request: MarkDeliveredRequest): AckResponse {

@@ -779,6 +779,67 @@ class BackendIntegrationTest {
     }
 
     @Test
+    fun syncExposesOnlyReceiptsRelevantToCurrentUser() = backendTestApp {
+        val parent = login(
+            inviteCode = "PARENT-DEMO",
+            platform = "desktop",
+        ).json()
+        val child = login(
+            inviteCode = "CHILD-DEMO",
+            platform = "android",
+        ).json()
+
+        val parentToken = parent.token()
+        val childToken = child.token()
+        val parentUserId = parent.data().req("user").obj().req("id").long()
+        val childUserId = child.data().req("user").obj().req("id").long()
+        val clientMessageUuid = UUID.randomUUID().toString()
+
+        val sendResponse = authorizedPost(
+            path = "/api/messages/send",
+            token = parentToken,
+            body = """
+                {
+                  "recipientUserId": $childUserId,
+                  "clientMessageUuid": "$clientMessageUuid",
+                  "type": "text",
+                  "body": "hello child"
+                }
+            """.trimIndent(),
+        )
+        assertEquals(HttpStatusCode.OK, sendResponse.status)
+        val messageId = sendResponse.json().data().req("message").obj().req("id").long()
+
+        val childInitialSync = authorizedGet("/api/messages/sync?since_id=0", childToken).json()
+        val childMessages = childInitialSync.data().req("messages").arr()
+        assertTrue(childMessages.any { it.jsonObject.req("id").long() == messageId })
+        val childReceipts = childInitialSync.data().req("receipts").arr()
+        assertTrue(
+            childReceipts.none {
+                it.jsonObject.req("messageId").long() == messageId &&
+                    it.jsonObject.req("userId").long() == parentUserId
+            },
+        )
+
+        val markReadResponse = authorizedPost(
+            path = "/api/messages/mark-read",
+            token = childToken,
+            body = """{"messageIds":[$messageId]}""",
+        )
+        assertEquals(HttpStatusCode.OK, markReadResponse.status)
+
+        val parentSyncAfterRead = authorizedGet("/api/messages/sync?since_id=0", parentToken).json()
+        val parentReceipts = parentSyncAfterRead.data().req("receipts").arr()
+        assertTrue(
+            parentReceipts.any {
+                it.jsonObject.req("messageId").long() == messageId &&
+                    it.jsonObject.req("userId").long() == childUserId &&
+                    it.jsonObject.req("readAt").toString() != "null"
+            },
+        )
+    }
+
+    @Test
     fun sendMessageIsDeduplicatedByClientMessageUuid() = backendTestApp {
         val parent = login(
             inviteCode = "PARENT-DEMO",

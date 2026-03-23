@@ -370,9 +370,9 @@ class ExposedMessageRepository : MessageRepository {
         MessagesTable.selectAll().where { MessagesTable.id eq messageId }.single().toMessagePayload()
     }
 
-    override suspend fun sync(familyId: Long, sinceId: Long, limit: Int): SyncPayload = dbQuery {
+    override suspend fun sync(principal: SessionPrincipal, sinceId: Long, limit: Int): SyncPayload = dbQuery {
         val events = SyncEventsTable.selectAll().where {
-            (SyncEventsTable.familyId eq familyId) and (SyncEventsTable.id greater sinceId)
+            (SyncEventsTable.familyId eq principal.familyId) and (SyncEventsTable.id greater sinceId)
         }.orderBy(SyncEventsTable.id to SortOrder.ASC).limit(limit).toList()
 
         val messageIds = events.filter { it[SyncEventsTable.entityType] == ENTITY_MESSAGE }.map { it[SyncEventsTable.entityId] }
@@ -388,14 +388,17 @@ class ExposedMessageRepository : MessageRepository {
         val receipts = if (receiptIds.isEmpty()) {
             emptyList()
         } else {
-            MessageReceiptsTable.selectAll().where { MessageReceiptsTable.id inList receiptIds }.orderBy(MessageReceiptsTable.id to SortOrder.ASC).map { row ->
-                MessageReceiptPayload(
-                    messageId = row[MessageReceiptsTable.messageId],
-                    userId = row[MessageReceiptsTable.userId],
-                    deliveredAt = row[MessageReceiptsTable.deliveredAt],
-                    readAt = row[MessageReceiptsTable.readAt],
-                )
+            MessageReceiptsTable.join(MessagesTable, JoinType.INNER, additionalConstraint = {
+                MessageReceiptsTable.messageId eq MessagesTable.id
+            }).selectAll().where {
+                (MessageReceiptsTable.id inList receiptIds) and
+                    (MessagesTable.familyId eq principal.familyId)
             }
+                .orderBy(MessageReceiptsTable.id to SortOrder.ASC)
+                .mapNotNull { row ->
+                    row.toReceiptPayload()
+                        .takeIf { row.isReceiptVisibleTo(principal) }
+                }
         }
 
         val systemEvents = if (locationIds.isEmpty()) {
@@ -835,3 +838,29 @@ private fun ResultRow.toMessagePayload(): MessagePayload = MessagePayload(
     status = MessageStatus.SENT,
     createdAt = this[MessagesTable.createdAt],
 )
+
+private fun ResultRow.toReceiptPayload(): MessageReceiptPayload = MessageReceiptPayload(
+    messageId = this[MessageReceiptsTable.messageId],
+    userId = this[MessageReceiptsTable.userId],
+    deliveredAt = this[MessageReceiptsTable.deliveredAt],
+    readAt = this[MessageReceiptsTable.readAt],
+)
+
+private fun ResultRow.isReceiptVisibleTo(principal: SessionPrincipal): Boolean {
+    val senderUserId = this[MessagesTable.senderUserId]
+    val recipientUserId = this[MessagesTable.recipientUserId]
+    val receiptUserId = this[MessageReceiptsTable.userId]
+
+    return when {
+        senderUserId == principal.userId -> {
+            if (recipientUserId == FAMILY_GROUP_CHAT_ID) {
+                receiptUserId != principal.userId
+            } else {
+                receiptUserId == recipientUserId
+            }
+        }
+        recipientUserId == principal.userId -> receiptUserId == principal.userId
+        recipientUserId == FAMILY_GROUP_CHAT_ID -> receiptUserId == principal.userId
+        else -> false
+    }
+}
