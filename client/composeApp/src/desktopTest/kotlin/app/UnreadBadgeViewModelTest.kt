@@ -10,6 +10,7 @@ import com.familymessenger.contract.FamilySummary
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.ProfileResponse
 import com.familymessenger.contract.SetupStatusResponse
+import com.familymessenger.contract.SyncPayload
 import com.familymessenger.contract.UserProfile
 import com.familymessenger.contract.UserRole
 import io.ktor.client.HttpClient
@@ -27,6 +28,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -237,17 +239,69 @@ class UnreadBadgeViewModelTest {
         }
     }
 
+    @Test
+    fun syncDoesNotMarkIncomingDirectMessageReadFromSendersOwnReceipt() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 3, name = "Поля", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val childContact = ContactSummary(user = parent, isOnline = true)
+        val incomingMessage = com.familymessenger.contract.MessagePayload(
+            id = 303,
+            clientMessageUuid = "33333333-3333-3333-3333-333333333333",
+            familyId = family.id,
+            senderUserId = parent.id,
+            recipientUserId = child.id,
+            type = com.familymessenger.contract.MessageType.TEXT,
+            body = "Поля, привет",
+            createdAt = Instant.parse("2026-03-23T18:00:00Z"),
+        )
+        val syncPayload = SyncPayload(
+            nextSinceId = 2,
+            messages = listOf(incomingMessage),
+            receipts = listOf(
+                com.familymessenger.contract.MessageReceiptPayload(
+                    messageId = incomingMessage.id!!,
+                    userId = parent.id,
+                    deliveredAt = Instant.parse("2026-03-23T18:00:00Z"),
+                    readAt = Instant.parse("2026-03-23T18:00:00Z"),
+                ),
+            ),
+            events = emptyList(),
+        )
+        val apiClient = apiClient(child, family, listOf(childContact), syncPayload)
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+
+        sessionStore.save(
+            StoredSession(
+                auth = AuthPayload(
+                    user = child,
+                    family = family,
+                    session = com.familymessenger.contract.DeviceSession(token = "test-token"),
+                ),
+            ),
+        )
+
+        messagesRepository.sync()
+
+        val stored = localDatabase.snapshot().messages.single { it.payload.id == incomingMessage.id }.payload
+        assertNotEquals(com.familymessenger.contract.MessageStatus.READ, stored.status)
+        assertNotEquals(com.familymessenger.contract.MessageStatus.DELIVERED, stored.status)
+    }
+
     private fun apiClient(
         currentUser: UserProfile,
         family: FamilySummary,
         contacts: List<ContactSummary>,
+        syncPayload: SyncPayload = com.familymessenger.contract.SyncPayload(0, emptyList(), emptyList(), emptyList()),
     ): FamilyMessengerApiClient {
         val engine = MockEngine { request ->
             when (request.url.encodedPath) {
                 "/api/setup/status" -> respondJson(ApiResponse(success = true, data = SetupStatusResponse(initialized = true)))
                 "/api/messages/mark-delivered" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
                 "/api/messages/mark-read" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
-                "/api/messages/sync" -> respondJson(ApiResponse(success = true, data = com.familymessenger.contract.SyncPayload(0, emptyList(), emptyList(), emptyList())))
+                "/api/messages/sync" -> respondJson(ApiResponse(success = true, data = syncPayload))
                 "/api/profile/me" -> respondJson(ApiResponse(success = true, data = ProfileResponse(user = currentUser, family = family)))
                 "/api/contacts" -> respondJson(ApiResponse(success = true, data = ContactsResponse(contacts = contacts)))
                 else -> error("Unexpected path in test: ${request.url.encodedPath}")

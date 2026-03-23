@@ -697,10 +697,11 @@ class MessagesRepository(
     suspend fun sync(): SyncPayload {
         val sinceId = localDatabase.snapshot().syncState.sinceId
         val payload = apiClient.sync(sinceId)
+        val currentUserId = sessionStore.currentSession()?.auth?.user?.id
         localDatabase.update { snapshot ->
             val merged = snapshot.messages
                 .mergePayloads(payload.messages)
-                .applyReceipts(payload.receipts)
+                .applyReceipts(payload.receipts, currentUserId)
                 .appendEvents(payload.events, sessionStore.currentSession()?.auth?.user?.id)
             snapshot.copy(
                 messages = merged,
@@ -919,9 +920,17 @@ private fun List<StoredMessage>.upsert(payload: MessagePayload): List<StoredMess
 private fun List<StoredMessage>.mergePayloads(messages: List<MessagePayload>): List<StoredMessage> =
     messages.fold(this) { acc, payload -> acc.upsert(payload) }
 
-private fun List<StoredMessage>.applyReceipts(receipts: List<MessageReceiptPayload>): List<StoredMessage> {
+private fun List<StoredMessage>.applyReceipts(
+    receipts: List<MessageReceiptPayload>,
+    currentUserId: Long?,
+): List<StoredMessage> {
+    if (currentUserId == null) return this
     var current = this
     receipts.forEach { receipt ->
+        val message = current.firstOrNull { it.payload.id == receipt.messageId }?.payload ?: return@forEach
+        if (!message.shouldApplyReceipt(receipt, currentUserId)) {
+            return@forEach
+        }
         val targetStatus = when {
             receipt.readAt != null -> MessageStatus.READ
             receipt.deliveredAt != null -> MessageStatus.DELIVERED
@@ -930,6 +939,22 @@ private fun List<StoredMessage>.applyReceipts(receipts: List<MessageReceiptPaylo
         current = current.advanceStatuses(listOf(receipt.messageId), targetStatus)
     }
     return current
+}
+
+private fun MessagePayload.shouldApplyReceipt(
+    receipt: MessageReceiptPayload,
+    currentUserId: Long,
+): Boolean = when {
+    senderUserId == currentUserId -> {
+        if (recipientUserId == FAMILY_GROUP_CHAT_ID) {
+            receipt.userId != currentUserId
+        } else {
+            receipt.userId == recipientUserId
+        }
+    }
+    recipientUserId == currentUserId -> receipt.userId == currentUserId
+    recipientUserId == FAMILY_GROUP_CHAT_ID -> receipt.userId == currentUserId
+    else -> false
 }
 
 private fun List<StoredMessage>.appendEvents(
