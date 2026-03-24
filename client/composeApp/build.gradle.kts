@@ -56,7 +56,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.zxing.android.embedded)
-            implementation(libs.firebase.messaging)
+        }
+        val androidFcmMain by getting {
+            dependencies {
+                implementation(libs.firebase.messaging)
+            }
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -85,6 +89,12 @@ kotlin {
 android {
     namespace = "com.familymessenger.client"
     compileSdk = 35
+
+    flavorDimensions += "push"
+    productFlavors {
+        create("fcm") { dimension = "push" }
+        create("noFcm") { dimension = "push" }
+    }
 
     defaultConfig {
         applicationId = "com.familymessenger.client"

@@ -12,12 +12,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.core.app.NotificationCompat
 import com.familymessenger.contract.PlatformType
-import com.google.firebase.messaging.FirebaseMessaging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import java.util.UUID
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 private object AndroidRuntime {
     lateinit var context: Context
@@ -85,11 +82,7 @@ private class AndroidNotificationService : NotificationService {
         showAndroidNotification(AndroidRuntime.context, title, body)
     }
 
-    override suspend fun getPushToken(): String? = suspendCoroutine { cont ->
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            cont.resume(if (task.isSuccessful) task.result else null)
-        }
-    }
+    override suspend fun getPushToken(): String? = providePushToken()
 }
 
 actual fun createPlatformServices(): PlatformServices {
