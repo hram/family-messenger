@@ -1,10 +1,36 @@
 package app
 
+import app.dto.StoredContact
+import app.dto.StoredMessage
+import app.dto.StoredSession
+import app.network.ApiExecutor
+import app.network.FamilyMessengerApiClient
+import app.repository.AdminRepository
+import app.repository.ContactsRepository
+import app.repository.DeviceRepository
+import app.repository.MessagesRepository
+import app.repository.PresenceRepository
+import app.repository.SessionRepository
+import app.repository.SetupRepository
+import app.storage.ClientSettingsRepository
+import app.storage.LocalDatabase
+import app.storage.SessionStore
+import app.ui.Screen
+import app.usecase.CreateMemberUseCase
+import app.usecase.LoadContactsUseCase
+import app.usecase.LoadSetupStatusUseCase
+import app.usecase.LoginUseCase
+import app.usecase.RemoveMemberUseCase
+import app.usecase.SendQuickActionUseCase
+import app.usecase.SendTextMessageUseCase
+import app.usecase.ShareLocationUseCase
+import app.usecase.VerifyAdminAccessUseCase
 import com.familymessenger.contract.AckResponse
 import com.familymessenger.contract.ApiResponse
 import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.ContactsResponse
+import com.familymessenger.contract.DeviceSession
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.FamilySummary
 import com.familymessenger.contract.PlatformType
@@ -74,7 +100,6 @@ class UnreadBadgeViewModelTest {
             syncEngine = syncEngine,
             login = LoginUseCase(sessionRepository, syncEngine),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
-            bootstrapSystem = BootstrapSystemUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
             createMember = CreateMemberUseCase(adminRepository),
             removeMember = RemoveMemberUseCase(adminRepository),
@@ -90,7 +115,7 @@ class UnreadBadgeViewModelTest {
                     auth = AuthPayload(
                         user = parent,
                         family = family,
-                        session = com.familymessenger.contract.DeviceSession(token = "test-token"),
+                        session = DeviceSession(token = "test-token"),
                     ),
                 ),
             )
@@ -179,7 +204,6 @@ class UnreadBadgeViewModelTest {
             syncEngine = syncEngine,
             login = LoginUseCase(sessionRepository, syncEngine),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
-            bootstrapSystem = BootstrapSystemUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
             createMember = CreateMemberUseCase(adminRepository),
             removeMember = RemoveMemberUseCase(adminRepository),
@@ -283,7 +307,8 @@ class UnreadBadgeViewModelTest {
             ),
         )
 
-        messagesRepository.sync()
+        val payload = messagesRepository.fetchSync(messagesRepository.syncCursor())
+        messagesRepository.applyTick(emptyList(), payload)
 
         val stored = localDatabase.snapshot().messages.single { it.payload.id == incomingMessage.id }.payload
         assertNotEquals(com.familymessenger.contract.MessageStatus.READ, stored.status)

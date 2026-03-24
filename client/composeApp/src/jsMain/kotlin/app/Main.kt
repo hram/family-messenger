@@ -13,7 +13,7 @@ fun main() {
     onWasmReady {
         CanvasBasedWindow("Family Messenger") {
             val app = remember { ClientApp.create(createPlatformServices()) }
-            FamilyMessengerApp(app.viewModel)
+            FamilyMessengerApp(app.viewModel, app.setupViewModel)
         }
     }
 }

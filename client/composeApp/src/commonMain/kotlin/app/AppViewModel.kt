@@ -11,8 +11,6 @@ import app.ui.AppUiState
 import app.ui.OnboardingFormState
 import app.ui.Screen
 import app.ui.SettingsState
-import app.ui.SetupMemberInputState
-import app.usecase.BootstrapSystemUseCase
 import app.usecase.CreateMemberUseCase
 import app.usecase.LoadContactsUseCase
 import app.usecase.LoadSetupStatusUseCase
@@ -50,7 +48,6 @@ class AppViewModel(
     private val syncEngine: SyncEngine,
     private val login: LoginUseCase,
     private val loadSetupStatus: LoadSetupStatusUseCase,
-    private val bootstrapSystem: BootstrapSystemUseCase,
     private val verifyAdminAccess: VerifyAdminAccessUseCase,
     private val createMember: CreateMemberUseCase,
     private val removeMember: RemoveMemberUseCase,
@@ -142,7 +139,7 @@ class AppViewModel(
                     currentUser = session?.auth?.user,
                     admin = if (session?.auth?.user?.isAdmin == true) mutableState.value.admin else AdminState(),
                     screen = when {
-                        session == null && platformInfo.type == PlatformType.WEB && mutableState.value.setup.isInitialized == false -> Screen.SETUP
+                        session == null && platformInfo.type == PlatformType.WEB && mutableState.value.isSystemInitialized == false -> Screen.SETUP
                         session == null -> Screen.ONBOARDING
                         session?.auth?.user?.isAdmin == false && mutableState.value.screen == Screen.ADMIN -> Screen.CONTACTS
                         else -> mutableState.value.screen.takeIf { it != Screen.ONBOARDING && it != Screen.SETUP } ?: Screen.CONTACTS
@@ -169,7 +166,7 @@ class AppViewModel(
             runCatching { loadSetupStatus() }
                 .onSuccess { setupStatus ->
                     mutableState.value = mutableState.value.copy(
-                        setup = mutableState.value.setup.copy(isInitialized = setupStatus.initialized),
+                        isSystemInitialized = setupStatus.initialized,
                         screen = when {
                             sessionRepository.restore() == null && platformInfo.type == PlatformType.WEB && !setupStatus.initialized -> Screen.SETUP
                             else -> mutableState.value.screen
@@ -214,107 +211,15 @@ class AppViewModel(
 
     fun updateInviteCode(value: String) = mutate { copy(onboarding = onboarding.copy(inviteCode = value)) }
 
-    fun updateSetupMasterPassword(value: String) = mutate { copy(setup = setup.copy(masterPassword = value)) }
-
-    fun updateSetupMasterPasswordConfirm(value: String) = mutate { copy(setup = setup.copy(masterPasswordConfirm = value)) }
-
-    fun updateSetupFamilyName(value: String) = mutate { copy(setup = setup.copy(familyName = value)) }
-
-    fun updateSetupMemberName(index: Int, value: String) = mutate {
-        copy(setup = setup.copy(members = setup.members.updated(index) { it.copy(displayName = value) }))
-    }
-
-    fun updateSetupMemberRole(index: Int, role: UserRole) = mutate {
-        copy(
-            setup = setup.copy(
-                members = setup.members.updated(index) {
-                    it.copy(
-                        role = role,
-                        isAdmin = if (role == UserRole.PARENT) it.isAdmin else false,
-                    )
-                },
-            ),
-        )
-    }
-
-    fun updateSetupMemberAdmin(index: Int, isAdmin: Boolean) = mutate {
-        copy(
-            setup = setup.copy(
-                members = setup.members.updated(index) {
-                    if (it.role == UserRole.PARENT) it.copy(isAdmin = isAdmin) else it.copy(isAdmin = false)
-                },
-            ),
-        )
-    }
-
-    fun addSetupMember() = mutate {
-        copy(setup = setup.copy(members = setup.members + SetupMemberInputState()))
-    }
-
-    fun removeSetupMember(index: Int) = mutate {
-        copy(
-            setup = setup.copy(
-                members = if (setup.members.size <= 1) {
-                    setup.members
-                } else {
-                    setup.members.filterIndexed { currentIndex, _ -> currentIndex != index }
-                },
-            ),
-        )
-    }
-
-    fun proceedFromSetupPasswordStep() {
-        val setup = state.value.setup
-        when {
-            setup.masterPassword.isBlank() -> mutate { copy(errorMessage = "Master password is required") }
-            setup.masterPasswordConfirm.isBlank() -> mutate { copy(errorMessage = "Please confirm the master password") }
-            setup.masterPassword != setup.masterPasswordConfirm -> mutate { copy(errorMessage = "Master password confirmation does not match") }
-            else -> mutate { copy(setup = setup.copy(step = 2), errorMessage = null) }
-        }
-    }
-
-    fun goToSetupStep(step: Int) = mutate { copy(setup = setup.copy(step = step.coerceIn(1, 3))) }
-
-    fun updateDraftMessage(value: String) = mutate { copy(draftMessage = value) }
-
-    fun submitSetup() {
-        runBusy {
-            val setup = state.value.setup
-            when {
-                setup.masterPassword != setup.masterPasswordConfirm -> error("Master password confirmation does not match")
-                setup.familyName.isBlank() -> error("Family name is required")
-                setup.members.isEmpty() -> error("At least one member is required")
-                setup.members.any { it.displayName.isBlank() } -> error("All members must have a name")
-            }
-            settingsRepository.updateServerBaseUrl(state.value.onboarding.baseUrl)
-            val response = bootstrapSystem(
-                masterPassword = setup.masterPassword,
-                familyName = setup.familyName,
-                members = setup.members,
-            )
-            mutableState.value = mutableState.value.copy(
-                screen = Screen.SETUP,
-                setup = setup.copy(
-                    step = 3,
-                    isInitialized = true,
-                    generatedInvites = response.invites,
-                    masterPassword = "",
-                    masterPasswordConfirm = "",
-                ),
-                admin = AdminState(),
-                statusMessage = "System initialized",
-                errorMessage = null,
-            )
-        }
-    }
-
-    fun finishSetup() = mutate {
+    fun onSetupComplete() = mutate {
         copy(
             screen = Screen.ONBOARDING,
-            setup = setup.copy(generatedInvites = emptyList()),
+            isSystemInitialized = true,
             onboarding = onboarding.copy(inviteCode = ""),
         )
     }
+
+    fun updateDraftMessage(value: String) = mutate { copy(draftMessage = value) }
 
     fun submitAuth() {
         runBusy {
@@ -565,7 +470,7 @@ class AppViewModel(
     }
 
     private fun fallbackLoggedOutScreen(): Screen =
-        if (platformInfo.type == PlatformType.WEB && mutableState.value.setup.isInitialized == false) Screen.SETUP else Screen.ONBOARDING
+        if (platformInfo.type == PlatformType.WEB && mutableState.value.isSystemInitialized == false) Screen.SETUP else Screen.ONBOARDING
 
     private fun runBusy(block: suspend () -> Unit) {
         scope.launch {

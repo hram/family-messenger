@@ -1,6 +1,8 @@
 package app.ui
 
 import app.AppViewModel
+import app.SetupViewModel
+import app.SetupUiState
 import app.platformBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,8 +90,9 @@ private val Divider       = Color(0xFFE8E8E8)
 
 // ── Theme wrapper ─────────────────────────────────────────────────────────────
 @Composable
-fun FamilyMessengerApp(viewModel: AppViewModel) {
+fun FamilyMessengerApp(viewModel: AppViewModel, setupViewModel: SetupViewModel? = null) {
     val state by viewModel.state.collectAsState()
+    val setupState by (setupViewModel?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SetupUiState()) }).collectAsState()
 
     MaterialTheme(
         colorScheme = lightColorScheme(
@@ -117,7 +120,7 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
 
                 when {
                     state.screen == Screen.ONBOARDING -> LoginScreen(state, viewModel)
-                    state.screen == Screen.SETUP -> SetupScreen(state, viewModel)
+                    state.screen == Screen.SETUP -> if (setupViewModel != null) SetupScreen(setupViewModel) else {}
                     isWide -> WideLayout(state, viewModel)
                     else -> when (state.screen) {
                         Screen.CONTACTS  -> ContactsScreen(state, viewModel)
@@ -128,9 +131,13 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
                     }
                 }
 
-                TgBanner(state, viewModel)
+                TgBanner(
+                    errorMessage = if (state.screen == Screen.SETUP) setupState.errorMessage else state.errorMessage,
+                    statusMessage = if (state.screen == Screen.SETUP) null else state.statusMessage,
+                    onDismiss = if (state.screen == Screen.SETUP) setupViewModel?.let { { it.clearError() } } else viewModel::clearBanner,
+                )
 
-                if (state.isBusy) {
+                if (if (state.screen == Screen.SETUP) setupState.isBusy else state.isBusy) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.TopEnd,
@@ -149,9 +156,9 @@ fun FamilyMessengerApp(viewModel: AppViewModel) {
 
 // ── Banner ────────────────────────────────────────────────────────────────────
 @Composable
-private fun TgBanner(state: AppUiState, viewModel: AppViewModel) {
-    val banner = state.errorMessage ?: state.statusMessage ?: return
-    val isError = state.errorMessage != null
+private fun TgBanner(errorMessage: String?, statusMessage: String?, onDismiss: (() -> Unit)?) {
+    val banner = errorMessage ?: statusMessage ?: return
+    val isError = errorMessage != null
     Surface(
         modifier = Modifier
             .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -171,8 +178,10 @@ private fun TgBanner(state: AppUiState, viewModel: AppViewModel) {
                 fontSize = 14.sp,
                 color = TextPrimary,
             )
-            TextButton(onClick = viewModel::clearBanner) {
-                Text("OK", color = TgBlue, fontWeight = FontWeight.Medium)
+            if (onDismiss != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("OK", color = TgBlue, fontWeight = FontWeight.Medium)
+                }
             }
         }
     }

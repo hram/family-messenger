@@ -1,6 +1,9 @@
 package app
 
-import app.module as backendModule
+import app.backend.module as backendModule
+import app.ui.AppTestTags
+import app.ui.FamilyMessengerApp
+import app.ui.contactRowTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.ComposeContentTestRule

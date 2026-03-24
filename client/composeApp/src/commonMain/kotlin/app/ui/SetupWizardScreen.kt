@@ -1,6 +1,8 @@
 package app.ui
 
-import app.AppViewModel
+import app.SetupUiState
+import app.SetupViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,7 +73,8 @@ private val ErrorRed       = Color(0xFFE24B4A)
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 @Composable
-internal fun SetupScreen(state: AppUiState, viewModel: AppViewModel) {
+internal fun SetupScreen(viewModel: SetupViewModel) {
+    val state by viewModel.state.collectAsState()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -86,9 +89,9 @@ internal fun SetupScreen(state: AppUiState, viewModel: AppViewModel) {
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            StepProgressBar(currentStep = state.setup.step)
+            StepProgressBar(currentStep = state.step)
 
-            when (state.setup.step) {
+            when (state.step) {
                 1    -> StepPassword(state, viewModel)
                 2    -> StepMembers(state, viewModel)
                 else -> StepInvites(state, viewModel)
@@ -159,7 +162,7 @@ private fun StepProgressBar(currentStep: Int) {
 
 // ── Step 1 — master password ──────────────────────────────────────────────────
 @Composable
-private fun StepPassword(state: AppUiState, viewModel: AppViewModel) {
+private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
     SetupCard {
         Text("Защита администратора", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
@@ -202,38 +205,38 @@ private fun StepPassword(state: AppUiState, viewModel: AppViewModel) {
         Spacer(Modifier.height(4.dp))
 
         SetupTextField(
-            value = state.onboarding.baseUrl,
-            onValueChange = viewModel::updateBaseUrl,
+            value = state.serverUrl,
+            onValueChange = viewModel::updateServerUrl,
             label = "Адрес сервера",
             modifier = Modifier.testTag(AppTestTags.SetupBaseUrl),
         )
 
         PasswordField(
-            value = state.setup.masterPassword,
-            onValueChange = viewModel::updateSetupMasterPassword,
+            value = state.masterPassword,
+            onValueChange = viewModel::updateMasterPassword,
             label = "Пароль администратора",
             modifier = Modifier.testTag(AppTestTags.SetupMasterPassword),
             showStrength = true,
         )
 
         PasswordField(
-            value = state.setup.masterPasswordConfirm,
-            onValueChange = viewModel::updateSetupMasterPasswordConfirm,
+            value = state.masterPasswordConfirm,
+            onValueChange = viewModel::updateMasterPasswordConfirm,
             label = "Повторите пароль",
             modifier = Modifier.testTag(AppTestTags.SetupMasterPasswordConfirm),
             errorMessage = if (
-                state.setup.masterPasswordConfirm.isNotEmpty() &&
-                state.setup.masterPassword != state.setup.masterPasswordConfirm
+                state.masterPasswordConfirm.isNotEmpty() &&
+                state.masterPassword != state.masterPasswordConfirm
             ) "Пароли не совпадают" else null,
         )
 
         Spacer(Modifier.height(4.dp))
 
-        val canProceed = state.setup.masterPassword.length >= 8 &&
-                state.setup.masterPassword == state.setup.masterPasswordConfirm
+        val canProceed = state.masterPassword.length >= 8 &&
+                state.masterPassword == state.masterPasswordConfirm
         SetupPrimaryButton(
             text = "Далее",
-            onClick = viewModel::proceedFromSetupPasswordStep,
+            onClick = viewModel::proceedFromPasswordStep,
             enabled = canProceed,
             modifier = Modifier.testTag(AppTestTags.SetupNext),
             showArrow = true,
@@ -243,7 +246,7 @@ private fun StepPassword(state: AppUiState, viewModel: AppViewModel) {
 
 // ── Step 2 — family members ───────────────────────────────────────────────────
 @Composable
-private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
+private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SetupCard {
             Text("Участники семьи", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
@@ -256,23 +259,23 @@ private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
             )
             Spacer(Modifier.height(4.dp))
             SetupTextField(
-                value = state.setup.familyName,
-                onValueChange = viewModel::updateSetupFamilyName,
+                value = state.familyName,
+                onValueChange = viewModel::updateFamilyName,
                 label = "Название семьи",
                 placeholder = "Например: Семья Ивановых",
                 modifier = Modifier.testTag(AppTestTags.SetupFamilyName),
             )
         }
 
-        state.setup.members.forEachIndexed { index, member ->
+        state.members.forEachIndexed { index, member ->
             MemberCard(
                 member = member,
                 index = index,
-                showRemove = state.setup.members.size > 1,
-                onNameChange = { viewModel.updateSetupMemberName(index, it) },
-                onRoleChange = { viewModel.updateSetupMemberRole(index, it) },
-                onAdminChange = { viewModel.updateSetupMemberAdmin(index, it) },
-                onRemove = { viewModel.removeSetupMember(index) },
+                showRemove = state.members.size > 1,
+                onNameChange = { viewModel.updateMemberName(index, it) },
+                onRoleChange = { viewModel.updateMemberRole(index, it) },
+                onAdminChange = { viewModel.updateMemberAdmin(index, it) },
+                onRemove = { viewModel.removeMember(index) },
             )
         }
 
@@ -282,7 +285,7 @@ private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .border(0.5.dp, CardBorder, RoundedCornerShape(10.dp))
-                .clickable(onClick = viewModel::addSetupMember)
+                .clickable(onClick = viewModel::addMember)
                 .testTag(AppTestTags.SetupAddMember),
             color = Color.Transparent,
         ) {
@@ -302,19 +305,19 @@ private fun StepMembers(state: AppUiState, viewModel: AppViewModel) {
         }
 
         // Nav buttons
-        val canCreate = state.setup.familyName.isNotBlank() &&
-                state.setup.members.isNotEmpty() &&
-                state.setup.members.all { it.displayName.isNotBlank() }
+        val canCreate = state.familyName.isNotBlank() &&
+                state.members.isNotEmpty() &&
+                state.members.all { it.displayName.isNotBlank() }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SetupSecondaryButton(
                 text = "Назад",
-                onClick = { viewModel.goToSetupStep(1) },
+                onClick = { viewModel.goToStep(1) },
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupBack),
                 showBackArrow = true,
             )
             SetupPrimaryButton(
                 text = "Создать",
-                onClick = viewModel::submitSetup,
+                onClick = viewModel::submit,
                 enabled = canCreate,
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupSubmit),
                 showArrow = true,
@@ -467,7 +470,7 @@ private fun MemberCard(
 
 // ── Step 3 — invite codes ─────────────────────────────────────────────────────
 @Composable
-private fun StepInvites(state: AppUiState, viewModel: AppViewModel) {
+private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Success header
         SetupCard {
@@ -506,13 +509,13 @@ private fun StepInvites(state: AppUiState, viewModel: AppViewModel) {
             )
         }
 
-        state.setup.generatedInvites.forEach { invite ->
-            InviteCard(invite = invite, serverUrl = state.onboarding.baseUrl)
+        state.generatedInvites.forEach { invite ->
+            InviteCard(invite = invite, serverUrl = state.serverUrl)
         }
 
         SetupPrimaryButton(
             text = "Войти в приложение",
-            onClick = viewModel::finishSetup,
+            onClick = viewModel::finish,
             modifier = Modifier.testTag(AppTestTags.SetupFinish),
         )
     }

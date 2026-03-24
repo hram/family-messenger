@@ -5,7 +5,6 @@ import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
-import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
 import com.familymessenger.contract.UserProfile
 
@@ -34,18 +33,6 @@ data class SetupMemberInputState(
     val isAdmin: Boolean = false,
 )
 
-data class SetupFormState(
-    val step: Int = 1,
-    val isInitialized: Boolean? = null,
-    val masterPassword: String = "",
-    val masterPasswordConfirm: String = "",
-    val familyName: String = "",
-    val members: List<SetupMemberInputState> = listOf(
-        SetupMemberInputState(role = UserRole.PARENT, isAdmin = true),
-        SetupMemberInputState(role = UserRole.CHILD),
-    ),
-    val generatedInvites: List<SetupInviteSummary> = emptyList(),
-)
 
 data class AdminState(
     val unlocked: Boolean = false,
@@ -63,8 +50,8 @@ data class AppUiState(
     val isBusy: Boolean = false,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
+    val isSystemInitialized: Boolean? = null,
     val onboarding: OnboardingFormState = OnboardingFormState(),
-    val setup: SetupFormState = SetupFormState(),
     val admin: AdminState = AdminState(),
     val settings: SettingsState = SettingsState(),
     val currentUser: UserProfile? = null,

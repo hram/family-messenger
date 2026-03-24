@@ -1,5 +1,6 @@
-package app
+package app.backend.backend
 
+import app.backend.module
 import com.familymessenger.contract.ErrorCode
 import io.ktor.client.request.get
 import io.ktor.client.request.header

@@ -22,6 +22,7 @@ import app.usecase.SendQuickActionUseCase
 import app.usecase.SendTextMessageUseCase
 import app.usecase.ShareLocationUseCase
 import app.usecase.VerifyAdminAccessUseCase
+import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -58,6 +59,7 @@ fun configuredHttpClient(base: HttpClient): HttpClient = base.config {
 
 class ClientApp private constructor(
     private val koinHandle: org.koin.core.KoinApplication,
+    val setupViewModel: SetupViewModel?,
 ) {
     val viewModel: AppViewModel = koinHandle.koin.get()
 
@@ -68,10 +70,23 @@ class ClientApp private constructor(
 
     companion object {
         fun create(platformServices: PlatformServices): ClientApp {
-            val app = koinApplication {
-                modules(commonClientModule(platformServices))
+            val isWeb = platformServices.platformInfo.type == PlatformType.WEB
+            val modules = buildList {
+                add(commonClientModule(platformServices))
+                if (isWeb) add(webSetupModule())
             }
-            return ClientApp(app)
+            val app = koinApplication { modules(modules) }
+            val setupViewModel = if (isWeb) {
+                val bootstrapUseCase = app.koin.get<BootstrapSystemUseCase>()
+                val settingsRepo = app.koin.get<app.storage.ClientSettingsRepository>()
+                val appViewModel = app.koin.get<AppViewModel>()
+                SetupViewModel(
+                    settingsRepository = settingsRepo,
+                    bootstrapSystem = bootstrapUseCase,
+                    onFinished = appViewModel::onSetupComplete,
+                )
+            } else null
+            return ClientApp(app, setupViewModel)
         }
     }
 }
@@ -99,7 +114,6 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { SyncEngine(get(), get(), get(), get(), get(), get(), get()) }
     single { LoginUseCase(get(), get()) }
     single { LoadSetupStatusUseCase(get()) }
-    single { BootstrapSystemUseCase(get()) }
     single { VerifyAdminAccessUseCase(get()) }
     single { CreateMemberUseCase(get()) }
     single { RemoveMemberUseCase(get()) }
@@ -119,7 +133,6 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
             syncEngine = get(),
             login = get(),
             loadSetupStatus = get(),
-            bootstrapSystem = get(),
             verifyAdminAccess = get(),
             createMember = get(),
             removeMember = get(),
@@ -129,4 +142,8 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
             shareLocationUseCase = get(),
         )
     }
+}
+
+private fun webSetupModule() = org.koin.dsl.module {
+    single { BootstrapSystemUseCase(get()) }
 }
