@@ -45,6 +45,9 @@ class FamilyMessengerApiClient(
     private val settingsRepository: ClientSettingsRepository,
     private val executor: ApiExecutor,
 ) {
+    // ── Auth ──────────────────────────────────────────────────────────────────
+
+    /** Аутентифицирует пользователя по инвайт-коду. Возвращает токен сессии и данные о пользователе и семье. */
     suspend fun login(request: LoginRequest): AuthPayload =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "POST /api/auth/login platform=${request.platform}")
@@ -54,12 +57,16 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Setup ─────────────────────────────────────────────────────────────────
+
+    /** Возвращает статус первоначальной настройки: инициализирована ли система (создана ли семья). */
     suspend fun setupStatus(): SetupStatusResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "GET /api/setup/status")
             httpClient.get(url("/api/setup/status")).body()
         }
 
+    /** Первоначальная настройка системы: создаёт семью, задаёт мастер-пароль и генерирует инвайт-коды для участников. */
     suspend fun bootstrap(request: SetupBootstrapRequest): SetupBootstrapResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "POST /api/setup/bootstrap members=${request.members.size}")
@@ -69,6 +76,9 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    /** Проверяет мастер-пароль и возвращает список участников семьи. Используется для входа в раздел администрирования. */
     suspend fun verifyAdminAccess(masterPassword: String): AdminMembersResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "POST /api/admin/verify")
@@ -79,6 +89,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Создаёт нового участника семьи и генерирует для него инвайт-код. Требует мастер-пароль. */
     suspend fun createMember(
         masterPassword: String,
         displayName: String,
@@ -94,6 +105,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Удаляет участника семьи по инвайт-коду. Аннулирует все его сессии. Требует мастер-пароль. */
     suspend fun removeMember(masterPassword: String, inviteCode: String): AdminMembersResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "POST /api/admin/members/remove invite=$inviteCode")
@@ -104,6 +116,9 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Profile & Contacts ────────────────────────────────────────────────────
+
+    /** Возвращает профиль текущего пользователя и данные его семьи (актуальные данные с сервера). */
     suspend fun profile(): ProfileResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "GET /api/profile/me")
@@ -112,6 +127,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Возвращает список участников семьи с их статусом онлайн и последним временем активности. */
     suspend fun contacts(): ContactsResponse =
         executor.execute {
             platformLogInfo(LOG_TAG_API, "GET /api/contacts")
@@ -120,6 +136,9 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Messages ──────────────────────────────────────────────────────────────
+
+    /** Отправляет сообщение (текст, быстрый ответ или геопозиция). Возвращает сообщение с серверным id. */
     suspend fun sendMessage(request: SendMessageRequest): SendMessageResponse =
         executor.execute {
             httpClient.post(url("/api/messages/send")) {
@@ -129,6 +148,10 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /**
+     * Возвращает новые сообщения и квитанции (доставка/прочтение) начиная с [sinceId].
+     * Используется polling'ом: при каждом опросе передаётся курсор последнего полученного сообщения.
+     */
     suspend fun sync(sinceId: Long): SyncPayload =
         executor.execute {
             httpClient.get(url("/api/messages/sync")) {
@@ -137,6 +160,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Подтверждает доставку сообщений на устройство. Сервер обновляет статус до DELIVERED. */
     suspend fun markDelivered(messageIds: List<Long>): AckResponse =
         executor.execute {
             httpClient.post(url("/api/messages/mark-delivered")) {
@@ -146,6 +170,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Подтверждает прочтение сообщений пользователем. Сервер обновляет статус до READ. */
     suspend fun markRead(messageIds: List<Long>): AckResponse =
         executor.execute {
             httpClient.post(url("/api/messages/mark-read")) {
@@ -155,6 +180,9 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Presence & Location ───────────────────────────────────────────────────
+
+    /** Публикует текущую геопозицию пользователя. Отображается другим участникам семьи на карте. */
     suspend fun shareLocation(location: LocationPayload): AckResponse =
         executor.execute {
             httpClient.post(url("/api/location/share")) {
@@ -164,6 +192,7 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Обновляет метку «онлайн» для текущего пользователя. Вызывается периодически пока приложение активно. */
     suspend fun ping(): AckResponse =
         executor.execute {
             httpClient.post(url("/api/presence/ping")) {
@@ -173,6 +202,12 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Device ────────────────────────────────────────────────────────────────
+
+    /**
+     * Регистрирует или обновляет FCM push-токен устройства.
+     * Передайте null чтобы отозвать токен (например, при выходе из аккаунта).
+     */
     suspend fun updatePushToken(pushToken: String?): AckResponse =
         executor.execute {
             httpClient.post(url("/api/device/update-push-token")) {
@@ -182,10 +217,15 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    // ── Health ────────────────────────────────────────────────────────────────
+
+    /** Проверяет доступность сервера. Используется при онбординге для валидации введённого URL. */
     suspend fun health(): HealthResponse =
         executor.execute {
             httpClient.get(url("/api/health")).body()
         }
+
+    // ── Private ───────────────────────────────────────────────────────────────
 
     private suspend fun url(path: String): String = settingsRepository.settings().serverBaseUrl + path
 

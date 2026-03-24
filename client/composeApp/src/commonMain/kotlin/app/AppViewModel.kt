@@ -1,7 +1,5 @@
 package app
 
-import app.dto.LocalDatabaseSnapshot
-import app.dto.StoredSession
 import app.repository.ContactsRepository
 import app.repository.MessagesRepository
 import app.repository.SessionRepository
@@ -12,9 +10,8 @@ import app.ui.AdminState
 import app.ui.AppUiState
 import app.ui.OnboardingFormState
 import app.ui.Screen
-import app.ui.SetupFormState
-import app.ui.SetupMemberInputState
 import app.ui.SettingsState
+import app.ui.SetupMemberInputState
 import app.usecase.BootstrapSystemUseCase
 import app.usecase.CreateMemberUseCase
 import app.usecase.LoadContactsUseCase
@@ -27,7 +24,6 @@ import app.usecase.ShareLocationUseCase
 import app.usecase.VerifyAdminAccessUseCase
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
-import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
@@ -130,6 +126,13 @@ class AppViewModel(
             }
             .launchIn(scope)
 
+        syncEngine.ticks
+            .onEach { tick ->
+                runCatching { messagesRepository.flushPendingMessages() }
+                messagesRepository.applyTick(tick.contacts, tick.payload)
+            }
+            .launchIn(scope)
+
         sessionStore.session
             .onEach { session ->
                 val settings = settingsRepository.settings()
@@ -182,11 +185,10 @@ class AppViewModel(
                 runCatching {
                     val session = sessionRepository.refreshSessionFromServer()
                     syncEngine.start(scope)
-                    val contacts = contactsRepository.refreshContacts()
                     mutableState.value = mutableState.value.copy(
                         screen = Screen.CONTACTS,
                         currentUser = session.auth.user,
-                        contacts = contacts,
+                        contacts = contactsRepository.cachedContacts(),
                         unreadCounts = emptyMap(),
                         errorMessage = null,
                     )
@@ -320,11 +322,10 @@ class AppViewModel(
             settingsRepository.updateServerBaseUrl(onboarding.baseUrl)
             val session = login(onboarding.inviteCode)
             syncEngine.start(scope)
-            val contacts = loadContacts()
             mutableState.value = mutableState.value.copy(
                 screen = Screen.CONTACTS,
                 currentUser = session.auth.user,
-                contacts = contacts,
+                contacts = contactsRepository.cachedContacts(),
                 unreadCounts = emptyMap(),
                 errorMessage = null,
                 statusMessage = "Сессия активна",
@@ -346,11 +347,10 @@ class AppViewModel(
             settingsRepository.updateServerBaseUrl(baseUrl)
             val session = login(inviteCode)
             syncEngine.start(scope)
-            val contacts = loadContacts()
             mutableState.value = mutableState.value.copy(
                 screen = Screen.CONTACTS,
                 currentUser = session.auth.user,
-                contacts = contacts,
+                contacts = contactsRepository.cachedContacts(),
                 unreadCounts = emptyMap(),
                 errorMessage = null,
                 statusMessage = "Сессия активна",

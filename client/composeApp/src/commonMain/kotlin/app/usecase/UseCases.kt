@@ -100,7 +100,6 @@ class ShareLocationUseCase(
         val location = presenceRepository.currentLocation() ?: return false
         messagesRepository.queueLocationMessage(contactId, location)
         runCatching { presenceRepository.recordLocationEvent(location) }
-        messagesRepository.sync()
         return true
     }
 }

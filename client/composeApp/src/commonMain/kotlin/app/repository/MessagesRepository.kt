@@ -5,9 +5,11 @@ import app.network.FamilyMessengerApiClient
 import app.storage.LocalDatabase
 import app.storage.SessionStore
 import app.dto.PendingMessage
+import app.dto.StoredContact
 import app.dto.StoredMessage
 import app.dto.SyncState
 import app.randomUuid
+import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.MessagePayload
@@ -137,9 +139,9 @@ class MessagesRepository(
         }
     }
 
-    suspend fun sync(): SyncPayload {
-        val sinceId = localDatabase.snapshot().syncState.sinceId
-        val payload = apiClient.sync(sinceId)
+    suspend fun fetchSync(sinceId: Long): SyncPayload = apiClient.sync(sinceId)
+
+    fun applyTick(contacts: List<ContactSummary>, payload: SyncPayload) {
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id
         localDatabase.update { snapshot ->
             val merged = snapshot.messages
@@ -147,16 +149,16 @@ class MessagesRepository(
                 .applyReceipts(payload.receipts, currentUserId)
                 .appendEvents(payload.events, currentUserId)
             snapshot.copy(
+                contacts = contacts.map { StoredContact(it, Clock.System.now()) },
                 messages = merged,
                 syncState = SyncState(payload.nextSinceId),
             )
         }
-        return payload
     }
 
-    suspend fun pendingCount(): Int = localDatabase.snapshot().pendingMessages.size
+    fun pendingCount(): Int = localDatabase.snapshot().pendingMessages.size
 
-    suspend fun syncCursor(): Long = localDatabase.snapshot().syncState.sinceId
+    fun syncCursor(): Long = localDatabase.snapshot().syncState.sinceId
 
     private suspend fun queueMessage(request: SendMessageRequest): MessagePayload {
         val session = sessionStore.currentSession() ?: throw AppException.Unauthorized("Please authenticate first")

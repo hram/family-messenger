@@ -5,8 +5,7 @@ import app.dto.LocalDatabaseSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.Json
 
 private const val LOCAL_DB_KEY = "client.local.db.v1"
@@ -15,20 +14,16 @@ class LocalDatabase(
     private val settingsStore: KeyValueStore,
     private val json: Json,
 ) {
-    private val mutex = Mutex()
     private val state = MutableStateFlow(loadInitial())
 
     val snapshots: StateFlow<LocalDatabaseSnapshot> = state.asStateFlow()
 
-    suspend fun snapshot(): LocalDatabaseSnapshot = state.value
+    fun snapshot(): LocalDatabaseSnapshot = state.value
 
-    suspend fun update(transform: (LocalDatabaseSnapshot) -> LocalDatabaseSnapshot): LocalDatabaseSnapshot =
-        mutex.withLock {
-            val updated = transform(state.value)
-            state.value = updated
-            persist(updated)
-            updated
-        }
+    fun update(transform: (LocalDatabaseSnapshot) -> LocalDatabaseSnapshot) {
+        state.update(transform)
+        persist(state.value)
+    }
 
     private fun loadInitial(): LocalDatabaseSnapshot =
         settingsStore.getString(LOCAL_DB_KEY)
