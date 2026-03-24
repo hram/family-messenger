@@ -10,7 +10,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("app.ApplicationKt")
+    mainClass.set("app.backend.ApplicationKt")
 }
 
 dependencies {

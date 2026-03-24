@@ -164,7 +164,13 @@ tar -C client/composeApp/build/dist/js/productionExecutable -czf /tmp/family-mes
 ```bash
 stat client/composeApp/build/dist/js/productionExecutable/index.html
 stat client/composeApp/build/dist/js/productionExecutable/composeApp.js
+unzip -p backend/build/libs/family-messenger-backend-all.jar META-INF/MANIFEST.MF | sed -n '1,20p'
 ```
+
+Для backend fat jar перед deploy отдельно проверить:
+
+- `Main-Class` в `MANIFEST.MF` соответствует реальному entrypoint
+- для текущего backend ожидаемое значение: `app.backend.ApplicationKt`
 
 Залить артефакты на сервер:
 
@@ -197,6 +203,23 @@ ssh "${DEPLOY_TARGET}" "
 ```
 
 Если нужен `rsync` вместо `scp`, использовать его допустимо, но смысл тот же: локальная сборка, затем загрузка артефактов в нужный контур.
+
+Важно:
+
+- после `scp` недостаточно предположить, что новый backend jar уже реально лежит в `${INSTALL_ROOT}`
+- если deploy делается через длинный `ssh "... && ... && ..."` one-liner, отдельно проверить checksum файла в `/tmp` и уже установленного файла в `${INSTALL_ROOT}`
+- полезный минимальный набор:
+
+```bash
+sha256sum backend/build/libs/family-messenger-backend-all.jar
+
+ssh "${DEPLOY_TARGET}" "
+  sha256sum /tmp/family-messenger-backend-all.jar
+  sha256sum ${INSTALL_ROOT}/family-messenger-backend-all.jar
+"
+```
+
+- checksum в `${INSTALL_ROOT}` должен совпасть с локальным checksum, иначе сервис может перезапуститься на старом jar
 
 ## Проверка После Деплоя
 
@@ -253,6 +276,15 @@ ssh "${DEPLOY_TARGET}" "
 - правильный ручной путь для web deploy: `jsBrowserProductionWebpack` -> `jsBrowserDistribution` -> проверить `dist/` -> архивировать `dist/` -> заливать на сервер
 - при обновлении `dev` web root сохранять каталог `downloads/`, иначе пропадёт опубликованный APK
 - после деплоя проверять не только `/api/health`, но и `Last-Modified` или размер `composeApp.js`
+
+Зафиксированный опыт от деплоя `2026-03-24`:
+
+- backend fat jar может собраться формально успешно, но с неверным `Main-Class`; это приводит к циклу рестартов `systemd` и ошибке `ClassNotFoundException`
+- для текущего backend правильный entrypoint в fat jar: `app.backend.ApplicationKt`
+- если `systemctl is-active` показывает `activating`, это ещё не признак успешного старта; нужно смотреть `journalctl -u ${SYSTEMD_UNIT}`
+- отдельная ловушка: новый jar может уже лежать в `/tmp`, но файл в `${INSTALL_ROOT}` может остаться старым
+- поэтому после раскладки backend надо проверять checksum именно установленного `${INSTALL_ROOT}/family-messenger-backend-all.jar`
+- если public health даёт `502`, сначала проверять backend напрямую на локальном порту контура, например `curl http://127.0.0.1:9081/api/health`, а уже потом разбирать Caddy
 
 ## Источники Правды В Репозитории
 

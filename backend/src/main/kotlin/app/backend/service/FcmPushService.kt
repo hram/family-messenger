@@ -4,10 +4,10 @@ import app.backend.config.FirebaseConfig
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.messaging.AndroidConfig
 import com.google.firebase.messaging.BatchResponse
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.Message
-import com.google.firebase.messaging.Notification
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -43,10 +43,11 @@ class FcmPushService(private val config: FirebaseConfig) {
             runCatching {
                 val messages = tokens.map { token ->
                     Message.builder()
-                        .setNotification(
-                            Notification.builder()
-                                .setTitle(title)
-                                .setBody(body)
+                        .putData("senderName", title)
+                        .putData("messageBody", body)
+                        .setAndroidConfig(
+                            AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
                                 .build()
                         )
                         .setToken(token)
