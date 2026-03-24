@@ -15,6 +15,10 @@ import app.repository.MessageRepository
 import app.repository.PresenceRepository
 import app.repository.ProfileRepository
 import app.repository.SetupRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.familymessenger.contract.AckResponse
 import com.familymessenger.contract.AdminCreateMemberRequest
 import com.familymessenger.contract.AdminCreateMemberResponse
@@ -96,7 +100,13 @@ class ProfileService(
 
 class MessageService(
     private val repository: MessageRepository,
+    private val deviceRepository: DeviceRepository,
+    private val profileRepository: ProfileRepository,
+    private val fcmPushService: FcmPushService,
 ) {
+    private val pushScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val pushedUuids = ConcurrentHashMap.newKeySet<String>()
+
     suspend fun sendMessage(principal: SessionPrincipal, request: SendMessageRequest): SendMessageResponse {
         validateMessageRequest(request)
         val payload = repository.sendMessage(
@@ -109,6 +119,24 @@ class MessageService(
             location = request.location,
             now = Clock.System.now(),
         )
+        if (!pushedUuids.add(request.clientMessageUuid.trim())) return SendMessageResponse(payload)
+        pushScope.launch {
+            runCatching {
+                val tokens = if (request.recipientUserId == FAMILY_GROUP_CHAT_ID) {
+                    deviceRepository.getPushTokensForFamily(principal.familyId, principal.userId)
+                } else {
+                    deviceRepository.getPushTokensForUsers(principal.familyId, listOf(request.recipientUserId))
+                }
+                val senderName = profileRepository.getDisplayName(principal.userId, principal.familyId)
+                    ?: "Family Messenger"
+                val pushBody = when (request.type) {
+                    MessageType.TEXT -> request.body?.trim() ?: ""
+                    MessageType.QUICK_ACTION -> "Быстрый ответ"
+                    MessageType.LOCATION -> "Геопозиция"
+                }
+                fcmPushService.sendPush(tokens, senderName, pushBody)
+            }
+        }
         return SendMessageResponse(payload)
     }
 

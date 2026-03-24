@@ -27,7 +27,24 @@ private class BrowserGeolocationService : GeolocationService {
 
 private class BrowserNotificationService : NotificationService {
     override fun notify(title: String, body: String) {
-        println("$title: $body")
+        val notif = window.asDynamic().Notification
+        if (notif == null || js("typeof Notification === 'undefined'") as Boolean) return
+        when (notif.permission as? String) {
+            "granted" -> showNotification(title, body)
+            "default" -> notif.requestPermission()
+            // "denied" — do nothing
+        }
+    }
+
+    private fun showNotification(title: String, body: String) {
+        js("new Notification(title, { body: body })")
+    }
+}
+
+fun requestBrowserNotificationPermission() {
+    val notif = window.asDynamic().Notification
+    if (notif != null && notif.permission == "default") {
+        notif.requestPermission()
     }
 }
 

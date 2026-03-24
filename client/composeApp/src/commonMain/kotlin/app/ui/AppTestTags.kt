@@ -1,4 +1,4 @@
-package app
+package app.ui
 
 object AppTestTags {
     const val OnboardingBaseUrl = "onboarding.baseUrl"

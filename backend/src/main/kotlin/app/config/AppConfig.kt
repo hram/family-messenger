@@ -8,6 +8,7 @@ data class AppConfig(
     val database: DatabaseConfig,
     val auth: AuthConfig,
     val rateLimit: RateLimitConfig,
+    val firebase: FirebaseConfig,
 ) {
     companion object {
         fun from(config: ApplicationConfig): AppConfig = AppConfig(
@@ -37,6 +38,9 @@ data class AppConfig(
                 authWindowSeconds = envOrConfig("AUTH_RATE_LIMIT_WINDOW_SECONDS", config, "app.rateLimit.authWindowSeconds", "60").toLongOrNull() ?: 60L,
                 authMaxRequestsPerWindow = envOrConfig("AUTH_RATE_LIMIT_MAX_REQUESTS", config, "app.rateLimit.authMaxRequestsPerWindow", "10").toIntOrNull() ?: 10,
             ),
+            firebase = FirebaseConfig(
+                serviceAccountJson = envOrNull("FIREBASE_SERVICE_ACCOUNT_JSON")?.takeIf { it.isNotBlank() },
+            ),
         )
     }
 }
@@ -59,6 +63,12 @@ data class RateLimitConfig(
     val authWindowSeconds: Long,
     val authMaxRequestsPerWindow: Int,
 )
+
+data class FirebaseConfig(
+    val serviceAccountJson: String?,
+) {
+    val enabled: Boolean get() = !serviceAccountJson.isNullOrBlank()
+}
 
 private fun ApplicationConfig.requiredString(path: String): String = property(path).getString()
 

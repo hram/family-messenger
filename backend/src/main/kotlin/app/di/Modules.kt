@@ -22,6 +22,7 @@ import app.service.AdminService
 import app.service.AuthService
 import app.service.ClientLogService
 import app.service.DeviceService
+import app.service.FcmPushService
 import app.service.MessageService
 import app.service.PresenceService
 import app.service.ProfileService
@@ -34,6 +35,8 @@ fun backendModule(appConfig: AppConfig) = module {
     single { appConfig }
     single { appConfig.auth }
     single { appConfig.rateLimit }
+    single { appConfig.firebase }
+    single { FcmPushService(get()) }
     single { DatabaseFactory(appConfig.database) }
     single { TokenService(get()) }
     single { RateLimitService(get()) }
@@ -51,7 +54,7 @@ fun backendModule(appConfig: AppConfig) = module {
     single { AuthService(get(), get(), get()) }
     single { ClientLogService(get()) }
     single { ProfileService(get()) }
-    single { MessageService(get()) }
+    single { MessageService(get(), get(), get(), get()) }
     single { PresenceService(get()) }
     single { DeviceService(get()) }
     single { SetupService(get()) }

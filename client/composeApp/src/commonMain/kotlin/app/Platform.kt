@@ -25,6 +25,7 @@ interface GeolocationService {
 
 interface NotificationService {
     fun notify(title: String, body: String)
+    suspend fun getPushToken(): String? = null
 }
 
 data class PlatformServices(

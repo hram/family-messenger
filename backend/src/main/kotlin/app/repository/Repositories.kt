@@ -32,6 +32,7 @@ interface AuthRepository {
 interface ProfileRepository {
     suspend fun getProfile(userId: Long, familyId: Long): ProfileResponse
     suspend fun getContacts(currentUserId: Long, familyId: Long, now: Instant): List<ContactSummary>
+    suspend fun getDisplayName(userId: Long, familyId: Long): String?
 }
 
 interface MessageRepository {
@@ -58,6 +59,8 @@ interface PresenceRepository {
 
 interface DeviceRepository {
     suspend fun updatePushToken(principal: SessionPrincipal, pushToken: String?, now: Instant)
+    suspend fun getPushTokensForUsers(familyId: Long, userIds: List<Long>): List<String>
+    suspend fun getPushTokensForFamily(familyId: Long, excludeUserId: Long): List<String>
 }
 
 interface ClientLogRepository {

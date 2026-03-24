@@ -271,6 +271,12 @@ class ExposedProfileRepository : ProfileRepository {
         )
     }
 
+    override suspend fun getDisplayName(userId: Long, familyId: Long): String? = dbQuery {
+        UsersTable.selectAll().where {
+            (UsersTable.id eq userId) and (UsersTable.familyId eq familyId)
+        }.singleOrNull()?.get(UsersTable.displayName)
+    }
+
     override suspend fun getContacts(currentUserId: Long, familyId: Long, now: Instant): List<ContactSummary> = dbQuery {
         val familyChat = FamiliesTable.selectAll().where { FamiliesTable.id eq familyId }
             .single()
@@ -535,6 +541,23 @@ class ExposedDeviceRepository : DeviceRepository {
             it[DevicesTable.pushToken] = pushToken
             it[updatedAt] = now
         }
+    }
+
+    override suspend fun getPushTokensForUsers(familyId: Long, userIds: List<Long>): List<String> = dbQuery {
+        if (userIds.isEmpty()) return@dbQuery emptyList()
+        DevicesTable.selectAll().where {
+            (DevicesTable.familyId eq familyId) and
+                (DevicesTable.userId inList userIds) and
+                DevicesTable.pushToken.isNotNull()
+        }.mapNotNull { it[DevicesTable.pushToken] }
+    }
+
+    override suspend fun getPushTokensForFamily(familyId: Long, excludeUserId: Long): List<String> = dbQuery {
+        DevicesTable.selectAll().where {
+            (DevicesTable.familyId eq familyId) and
+                (DevicesTable.userId neq excludeUserId) and
+                DevicesTable.pushToken.isNotNull()
+        }.mapNotNull { it[DevicesTable.pushToken] }
     }
 }
 

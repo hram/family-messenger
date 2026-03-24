@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.google.services)
 }
 
 kotlin {
@@ -55,6 +56,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.zxing.android.embedded)
+            implementation(libs.firebase.messaging)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

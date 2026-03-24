@@ -2,6 +2,7 @@
 
 package app
 
+import app.ui.FamilyMessengerApp
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow

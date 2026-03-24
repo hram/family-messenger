@@ -1,4 +1,4 @@
-package app
+package app.ui
 
 import com.familymessenger.contract.AdminMemberSummary
 import com.familymessenger.contract.ContactSummary

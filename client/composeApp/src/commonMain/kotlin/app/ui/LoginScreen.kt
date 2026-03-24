@@ -1,5 +1,8 @@
-package app
+package app.ui
 
+import app.AppViewModel
+import app.isQrScannerSupported
+import app.QrScannerSheet
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -318,14 +321,3 @@ private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = LoginBlue,
 )
 
-// ── QR Scanner stub (реализуется на Android/iOS) ─────────────────────────────
-
-/** Возвращает true если платформа поддерживает сканирование QR. */
-expect fun isQrScannerSupported(): Boolean
-
-/** Платформенный экран/лист сканирования QR. */
-@Composable
-expect fun QrScannerSheet(
-    onResult: (String?) -> Unit,
-    onDismiss: () -> Unit,
-)
