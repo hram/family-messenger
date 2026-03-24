@@ -1,0 +1,203 @@
+@startuml
+title Family Messenger - local notification flow when push is disabled
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+participant "SyncEngine" as SE
+participant "ContactsRepository" as CR
+participant "MessagesRepository" as MR
+participant "FamilyMessengerApiClient" as API #A7D8FF
+participant "ClientSettingsRepository" as Settings
+participant "NotificationService" as Notify
+
+SE -> Settings : settings()
+activate SE
+activate Settings
+Settings --> SE : pollingEnabled, pushEnabled
+deactivate Settings
+
+alt polling enabled
+  SE -> CR : fetchContacts()
+  activate CR
+  CR -> API : contacts()
+  activate API #A7D8FF
+  API --> CR : ContactsResponse
+  deactivate API
+  CR --> SE : contacts
+  deactivate CR
+
+  SE -> MR : syncCursor()
+  activate MR
+  MR --> SE : sinceId
+  deactivate MR
+
+  SE -> MR : fetchSync(sinceId)
+  activate MR
+  MR -> API : sync(sinceId)
+  activate API #A7D8FF
+  API --> MR : SyncPayload(messages, receipts, events)
+  deactivate API
+  MR --> SE : payload
+  deactivate MR
+
+  SE -> SE : incomingMessages = payload.messages\nwhere senderUserId != currentUserId
+
+  alt incomingMessages not empty and pushEnabled == false
+    SE -> Notify : notify(title, body)
+    activate Notify
+    Notify --> SE : local notification shown
+    deactivate Notify
+  else no incoming or push enabled
+    SE -> SE : no local notification
+  end
+end
+
+deactivate SE
+
+@enduml
+
+@startuml
+title Family Messenger - Android push token registration flow
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+participant "User" as User
+participant "AppViewModel" as VM
+participant "ClientSettingsRepository" as Settings
+participant "SyncEngine" as SE
+participant "NotificationService\n(AndroidNotificationService)" as Notify
+participant "DeviceRepository" as DR
+participant "FamilyMessengerApiClient" as API #A7D8FF
+participant "Backend DeviceService" as DeviceSvc
+database "DevicesTable" as Devices
+
+User -> VM : enable push notifications
+activate User
+activate VM
+VM -> Settings : updatePushEnabled(true)
+activate Settings
+Settings --> VM : persisted
+deactivate Settings
+VM --> User : UI state updated
+deactivate VM
+deactivate User
+
+SE -> Settings : settings()
+activate SE
+activate Settings
+Settings --> SE : pushEnabled = true
+deactivate Settings
+
+SE -> Notify : getPushToken()
+activate Notify
+Notify --> SE : Firebase token or null
+deactivate Notify
+
+SE -> DR : updatePushToken(token)
+activate DR
+DR -> API : updatePushToken(token)
+activate API #A7D8FF
+API --> DR : AckResponse
+deactivate API
+DR --> SE : accepted
+deactivate DR
+
+API -> DeviceSvc : POST /api/device/update-push-token
+activate DeviceSvc
+DeviceSvc -> Devices : update current device push_token
+activate Devices
+Devices --> DeviceSvc : stored
+deactivate Devices
+DeviceSvc --> API : AckResponse(true)
+deactivate DeviceSvc
+deactivate SE
+
+note over Notify
+  Android only:
+  getPushToken() calls FirebaseMessaging.getInstance().token
+end note
+
+@enduml
+
+@startuml
+title Family Messenger - backend FCM push delivery to Android client
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+participant "Sender client" as Sender
+participant "FamilyMessengerApiClient" as API #A7D8FF
+participant "Backend MessageService" as MsgSvc
+participant "MessageRepository" as MsgRepo
+participant "DeviceRepository" as DR
+participant "ProfileRepository" as PR
+participant "FcmPushService" as FCM
+participant "Firebase Cloud Messaging" as Firebase
+participant "Android FamilyMessengerFcmService" as AndroidFcm
+participant "AndroidNotificationService/\nshowAndroidNotification" as AndroidNotify
+
+Sender -> API : sendMessage(request)
+activate Sender
+activate API #A7D8FF
+API -> MsgSvc : POST /api/messages/send
+activate MsgSvc
+MsgSvc -> MsgRepo : sendMessage(...)
+activate MsgRepo
+MsgRepo --> MsgSvc : MessagePayload
+deactivate MsgRepo
+MsgSvc --> API : SendMessageResponse
+API --> Sender : message accepted
+deactivate API
+deactivate Sender
+
+MsgSvc -> DR : getPushTokensForUsers(...) or\ngetPushTokensForFamily(...)
+activate DR
+DR --> MsgSvc : tokens[]
+deactivate DR
+
+MsgSvc -> PR : getDisplayName(senderUserId, familyId)
+activate PR
+PR --> MsgSvc : senderName
+deactivate PR
+
+MsgSvc -> FCM : sendPush(tokens, title, body)
+activate FCM
+FCM -> Firebase : sendEach(messages)
+activate Firebase
+Firebase --> FCM : BatchResponse
+deactivate Firebase
+FCM --> MsgSvc : done
+deactivate FCM
+deactivate MsgSvc
+
+Firebase -> AndroidFcm : push message
+activate AndroidFcm
+AndroidFcm -> AndroidNotify : showAndroidNotification(title, body)
+activate AndroidNotify
+AndroidNotify --> AndroidFcm : system notification displayed
+deactivate AndroidNotify
+deactivate AndroidFcm
+
+note over MsgSvc,FCM
+  This path exists only if:
+  - recipient device has a stored push token
+  - Firebase is configured on backend
+end note
+
+note over AndroidFcm
+  onNewToken() does not send token immediately.
+  Token is re-synced later through SyncEngine -> getPushToken() -> updatePushToken().
+end note
+
+@enduml

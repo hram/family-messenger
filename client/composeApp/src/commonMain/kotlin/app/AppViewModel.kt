@@ -123,13 +123,6 @@ class AppViewModel(
             }
             .launchIn(scope)
 
-        syncEngine.ticks
-            .onEach { tick ->
-                runCatching { messagesRepository.flushPendingMessages() }
-                messagesRepository.applyTick(tick.contacts, tick.payload)
-            }
-            .launchIn(scope)
-
         sessionStore.session
             .onEach { session ->
                 val settings = settingsRepository.settings()
@@ -292,7 +285,6 @@ class AppViewModel(
                 messages = messages,
             )
             scope.launch {
-                runCatching { messagesRepository.markConversationDelivered(contact.user.id) }
                 runCatching { messagesRepository.markConversationRead(contact.user.id) }
             }
         }

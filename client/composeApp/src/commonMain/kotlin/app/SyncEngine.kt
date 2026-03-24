@@ -6,23 +6,12 @@ import app.repository.MessagesRepository
 import app.repository.PresenceRepository
 import app.storage.ClientSettingsRepository
 import app.storage.SessionStore
-import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.MessageType
-import com.familymessenger.contract.SyncPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-
-data class SyncTick(
-    val contacts: List<ContactSummary>,
-    val payload: SyncPayload,
-)
 
 class SyncEngine(
     private val sessionStore: SessionStore,
@@ -36,8 +25,6 @@ class SyncEngine(
     private var pollingJob: Job? = null
     private var cycles = 0
     private val kickChannel = Channel<Unit>(Channel.CONFLATED)
-    private val _ticks = MutableSharedFlow<SyncTick>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val ticks: SharedFlow<SyncTick> = _ticks.asSharedFlow()
 
     fun start(scope: CoroutineScope) {
         if (pollingJob != null) return
@@ -72,6 +59,7 @@ class SyncEngine(
 
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id
         val incomingMessages = payload.messages.filter { it.senderUserId != currentUserId }
+        val incomingMessageIds = incomingMessages.mapNotNull { it.id }
 
         if (incomingMessages.isNotEmpty() && !settings.pushEnabled) {
             val first = incomingMessages.first()
@@ -87,7 +75,9 @@ class SyncEngine(
             notificationService.notify(title, body)
         }
 
-        _ticks.emit(SyncTick(contacts, payload))
+        runCatching { messagesRepository.flushPendingMessages() }
+        messagesRepository.applyTick(contacts, payload)
+        runCatching { messagesRepository.markDelivered(incomingMessageIds) }
 
         if (cycles % 3 == 0) {
             presenceRepository.ping()

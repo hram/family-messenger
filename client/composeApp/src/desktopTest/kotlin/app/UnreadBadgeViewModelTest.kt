@@ -47,15 +47,19 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.cancel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class UnreadBadgeViewModelTest {
@@ -313,6 +317,94 @@ class UnreadBadgeViewModelTest {
         val stored = localDatabase.snapshot().messages.single { it.payload.id == incomingMessage.id }.payload
         assertNotEquals(com.familymessenger.contract.MessageStatus.READ, stored.status)
         assertNotEquals(com.familymessenger.contract.MessageStatus.DELIVERED, stored.status)
+    }
+
+    @Test
+    fun syncMarksIncomingMessagesDeliveredAfterApplyTick() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 3, name = "Поля", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val childContact = ContactSummary(user = child, isOnline = true)
+        val incomingMessage = com.familymessenger.contract.MessagePayload(
+            id = 404,
+            clientMessageUuid = "44444444-4444-4444-4444-444444444444",
+            familyId = family.id,
+            senderUserId = child.id,
+            recipientUserId = parent.id,
+            type = com.familymessenger.contract.MessageType.TEXT,
+            body = "Новое сообщение",
+            createdAt = Instant.parse("2026-03-23T18:05:00Z"),
+        )
+        val requestedPaths = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            synchronized(requestedPaths) {
+                requestedPaths += request.url.encodedPath
+            }
+            when (request.url.encodedPath) {
+                "/api/contacts" -> respondJson(ApiResponse(success = true, data = ContactsResponse(contacts = listOf(childContact))))
+                "/api/messages/sync" -> respondJson(
+                    ApiResponse(
+                        success = true,
+                        data = SyncPayload(
+                            nextSinceId = 1,
+                            messages = listOf(incomingMessage),
+                            receipts = emptyList(),
+                            events = emptyList(),
+                        ),
+                    ),
+                )
+                "/api/messages/mark-delivered" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
+                else -> error("Unexpected path in test: ${request.url.encodedPath}")
+            }
+        }
+        val httpClient = configuredHttpClient(HttpClient(engine))
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val apiClient = FamilyMessengerApiClient(
+            httpClient = httpClient,
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            executor = ApiExecutor(sessionStore),
+        )
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+        try {
+            sessionStore.save(
+                StoredSession(
+                    auth = AuthPayload(
+                        user = parent,
+                        family = family,
+                        session = DeviceSession(token = "test-token"),
+                    ),
+                ),
+            )
+
+            syncEngine.start(scope)
+
+            waitUntil("mark-delivered request sent from sync loop") {
+                synchronized(requestedPaths) {
+                    requestedPaths.contains("/api/messages/mark-delivered")
+                }
+            }
+
+            val stored = localDatabase.snapshot().messages.single { it.payload.id == incomingMessage.id }.payload
+            assertEquals(com.familymessenger.contract.MessageStatus.DELIVERED, stored.status)
+        } finally {
+            syncEngine.stop()
+            scope.cancel()
+        }
     }
 
     private fun apiClient(

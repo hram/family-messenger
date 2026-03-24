@@ -1,0 +1,209 @@
+@startuml
+title Family Messenger - unread badge appearance flow
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+participant "SyncEngine" as SE
+participant "FamilyMessengerApiClient" as API #A7D8FF
+participant "MessagesRepository" as MR
+database "LocalDatabase" as DB
+participant "AppViewModel" as VM
+participant "AppUiState" as State
+participant "ContactsPanel / ContactRow" as UI
+
+== Sync brings a new incoming message ==
+
+SE -> MR : syncCursor()
+activate SE
+activate MR
+MR -> DB : snapshot().syncState.sinceId
+activate DB
+DB --> MR : sinceId
+deactivate DB
+MR --> SE : sinceId
+deactivate MR
+
+SE -> API : sync(sinceId)
+activate API #A7D8FF
+API --> SE : SyncPayload(messages, receipts,\nevents, nextSinceId)
+deactivate API
+
+SE -> MR : flushPendingMessages()
+activate MR
+MR -> DB : snapshot().pendingMessages
+activate DB
+DB --> MR : pending[]
+deactivate DB
+deactivate MR
+
+SE -> MR : applyTick(contacts, payload)
+activate MR
+MR -> DB : update(snapshot)
+activate DB
+note right of MR
+  applyTick():
+  1. mergePayloads(payload.messages)
+  2. applyReceipts(payload.receipts)
+  3. appendEvents(payload.events)
+  4. syncState.sinceId = nextSinceId
+end note
+deactivate DB
+deactivate MR
+
+SE -> MR : markDelivered(incomingMessageIds)
+activate MR
+alt incoming ids not empty
+  MR -> API : markDelivered(messageIds)
+  activate API #A7D8FF
+  API --> MR : AckResponse
+  deactivate API
+  MR -> DB : advanceStatuses(messageIds, DELIVERED)
+  activate DB
+  deactivate DB
+end
+deactivate MR
+deactivate SE
+
+DB --> VM : snapshots StateFlow
+activate VM
+VM -> VM : recompute unreadCounts
+note right of VM
+  unreadCounts are built from:
+  - incoming messages only
+  - status != READ
+  - grouped by senderUserId
+  - grouped by FAMILY_GROUP_CHAT_ID for family chat
+end note
+
+VM -> State : state.unreadCounts = computed map
+activate State
+State --> UI : unreadCounts
+deactivate State
+activate UI
+UI -> UI : ContactRow(unreadCount > 0)\nrenders blue badge
+deactivate UI
+deactivate VM
+
+@enduml
+
+@startuml
+title Family Messenger - unread badge clearing flow
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "User" as User
+participant "AppViewModel" as VM
+participant "MessagesRepository" as MR
+participant "FamilyMessengerApiClient" as API #A7D8FF
+database "LocalDatabase" as DB
+participant "AppUiState" as State
+participant "ContactsPanel / ContactRow" as UI
+
+== Manual openChat path ==
+
+User -> VM : openChat(contact)
+activate User
+activate VM
+VM -> MR : conversation(contactId)
+activate MR
+MR -> DB : snapshot().messages
+activate DB
+DB --> MR : chat messages
+deactivate DB
+MR --> VM : messages
+deactivate MR
+
+VM -> MR : markConversationRead(contactId)
+activate MR
+MR -> API : markRead(messageIds)
+activate API #A7D8FF
+API --> MR : AckResponse
+deactivate API
+MR -> DB : advanceStatuses(messageIds, READ)\nlastReadAtByChat[contactId] = now
+activate DB
+deactivate DB
+deactivate MR
+
+DB --> VM : snapshots StateFlow
+VM -> VM : recompute unreadCounts
+VM -> State : unreadCounts[contactId] = 0
+activate State
+State --> UI : unreadCounts
+deactivate State
+activate UI
+UI -> UI : badge disappears
+deactivate UI
+
+== Auto-clear while chat is already open ==
+
+DB --> VM : snapshots StateFlow after new message
+activate DB
+deactivate DB
+VM -> VM : recompute unreadCounts
+
+alt screen == CHAT and selectedContactId != null and unreadCounts[selectedContactId] > 0
+  VM -> MR : markConversationRead(selectedContactId)
+  activate MR
+  MR -> API : markRead(messageIds)
+  activate API #A7D8FF
+  API --> MR : AckResponse
+  deactivate API
+  MR -> DB : advanceStatuses(messageIds, READ)
+  activate DB
+  deactivate DB
+  deactivate MR
+  DB --> VM : snapshots StateFlow
+  VM -> State : unreadCounts[selectedContactId] = 0
+  activate State
+  State --> UI : unreadCounts
+  deactivate State
+  activate UI
+  UI -> UI : badge may disappear almost immediately
+  deactivate UI
+end
+
+deactivate VM
+deactivate User
+
+@enduml
+
+@startuml
+title Family Messenger - unread badge state transitions
+
+skinparam shadowing false
+skinparam participantPadding 20
+skinparam boxPadding 10
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+participant "No badge" as NoBadge
+participant "Has unread badge" as HasUnread
+
+NoBadge -> HasUnread : incoming message stored\nand status != READ
+activate HasUnread
+HasUnread -> HasUnread : more incoming messages\nfor same chat
+HasUnread -> NoBadge : markConversationRead()\nlocal status advanced to READ
+deactivate HasUnread
+NoBadge -> HasUnread : next incoming unread message
+activate HasUnread
+HasUnread -> NoBadge : chat opened and auto-read fired
+deactivate HasUnread
+
+note right of HasUnread
+  Source of truth:
+  AppUiState.unreadCounts[chatId]
+
+  Count includes messages that are:
+  - senderUserId != currentUserId
+  - status != READ
+end note
+
+@enduml

@@ -104,10 +104,15 @@ class MessagesRepository(
             }
             .mapNotNull { it.id }
             .take(200)
-        if (messageIds.isEmpty()) return
-        apiClient.markDelivered(messageIds)
+        markDelivered(messageIds)
+    }
+
+    suspend fun markDelivered(messageIds: List<Long>) {
+        val limitedIds = messageIds.distinct().take(200)
+        if (limitedIds.isEmpty()) return
+        apiClient.markDelivered(limitedIds)
         localDatabase.update { snapshot ->
-            snapshot.copy(messages = snapshot.messages.advanceStatuses(messageIds, MessageStatus.DELIVERED))
+            snapshot.copy(messages = snapshot.messages.advanceStatuses(limitedIds, MessageStatus.DELIVERED))
         }
     }
 
