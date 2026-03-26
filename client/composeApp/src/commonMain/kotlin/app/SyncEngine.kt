@@ -7,11 +7,15 @@ import app.repository.PresenceRepository
 import app.storage.ClientSettingsRepository
 import app.storage.SessionStore
 import com.familymessenger.contract.MessageType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+
+private const val SYNC_IDLE_DELAY_MS = 1_000L
+private const val SYNC_RETRY_DELAY_MS = 3_000L
 
 class SyncEngine(
     private val sessionStore: SessionStore,
@@ -24,15 +28,10 @@ class SyncEngine(
 ) {
     private var pollingJob: Job? = null
     private var cycles = 0
-    private val kickChannel = Channel<Unit>(Channel.CONFLATED)
 
     fun start(scope: CoroutineScope) {
         if (pollingJob != null) return
         pollingJob = scope.launchLoop()
-    }
-
-    fun kick() {
-        kickChannel.trySend(Unit)
     }
 
     suspend fun stop() {
@@ -41,16 +40,26 @@ class SyncEngine(
     }
 
     private fun CoroutineScope.launchLoop(): Job = launch {
-        while (true) {
-            runCatching { syncOnce() }
-            withTimeoutOrNull(4_000) { kickChannel.receive() }
+        while (isActive) {
+            val result = try {
+                syncOnce()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                SyncCycleResult.FAILED
+            }
+            when (result) {
+                SyncCycleResult.SUCCESS -> Unit
+                SyncCycleResult.IDLE -> delay(SYNC_IDLE_DELAY_MS)
+                SyncCycleResult.FAILED -> delay(SYNC_RETRY_DELAY_MS)
+            }
         }
     }
 
-    private suspend fun syncOnce() {
-        if (sessionStore.currentSession() == null) return
+    private suspend fun syncOnce(): SyncCycleResult {
+        if (sessionStore.currentSession() == null) return SyncCycleResult.IDLE
         val settings = settingsRepository.settings()
-        if (!settings.pollingEnabled) return
+        if (!settings.pollingEnabled) return SyncCycleResult.IDLE
 
         val contacts = contactsRepository.fetchContacts()
         val sinceId = messagesRepository.syncCursor()
@@ -87,5 +96,13 @@ class SyncEngine(
             val token = notificationService.getPushToken()
             deviceRepository.updatePushToken(token)
         }
+
+        return SyncCycleResult.SUCCESS
     }
+}
+
+private enum class SyncCycleResult {
+    SUCCESS,
+    IDLE,
+    FAILED,
 }

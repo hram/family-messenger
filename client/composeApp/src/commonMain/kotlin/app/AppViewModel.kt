@@ -80,7 +80,7 @@ class AppViewModel(
                 val unreadCounts = if (currentUserId != null) {
                     snapshot.messages
                         .map { it.payload }
-                        .filter { it.senderUserId != currentUserId }
+                        .filter { it.isIncomingFor(currentUserId) }
                         .filter { it.status != MessageStatus.READ }
                         .groupingBy {
                             if (it.recipientUserId == FAMILY_GROUP_CHAT_ID) FAMILY_GROUP_CHAT_ID else it.senderUserId
@@ -406,7 +406,6 @@ class AppViewModel(
         runBusy {
             settingsRepository.updatePollingEnabled(enabled)
             mutableState.value = mutableState.value.copy(settings = mutableState.value.settings.copy(pollingEnabled = enabled))
-            syncEngine.kick()
         }
     }
 
@@ -431,6 +430,7 @@ class AppViewModel(
             mutableState.value = mutableState.value.copy(
                 screen = fallbackLoggedOutScreen(),
                 currentUser = null,
+                onboarding = mutableState.value.onboarding.copy(inviteCode = ""),
                 contacts = emptyList(),
                 unreadCounts = emptyMap(),
                 messages = emptyList(),
@@ -479,6 +479,10 @@ class AppViewModel(
         mutableState.value = mutableState.value.transform()
     }
 }
+
+private fun com.familymessenger.contract.MessagePayload.isIncomingFor(currentUserId: Long): Boolean =
+    senderUserId != currentUserId &&
+        (recipientUserId == currentUserId || recipientUserId == FAMILY_GROUP_CHAT_ID)
 
 private fun <T> List<T>.updated(index: Int, transform: (T) -> T): List<T> =
     mapIndexed { currentIndex, item -> if (currentIndex == index) transform(item) else item }

@@ -1,6 +1,5 @@
 package app.usecase
 
-import app.SyncEngine
 import app.dto.StoredSession
 import app.repository.AdminRepository
 import app.repository.ContactsRepository
@@ -20,13 +19,8 @@ import com.familymessenger.contract.UserRole
 
 class LoginUseCase(
     private val sessionRepository: SessionRepository,
-    private val syncEngine: SyncEngine,
 ) {
-    suspend operator fun invoke(inviteCode: String): StoredSession {
-        val session = sessionRepository.login(inviteCode)
-        syncEngine.kick()
-        return session
-    }
+    suspend operator fun invoke(inviteCode: String): StoredSession = sessionRepository.login(inviteCode)
 }
 
 class LoadSetupStatusUseCase(

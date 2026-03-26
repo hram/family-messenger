@@ -16,10 +16,14 @@ private const val LOG_TAG_API = "FamilyMessengerApi"
 class ApiExecutor(
     private val sessionStore: SessionStore,
 ) {
-    suspend fun <T> execute(block: suspend () -> ApiResponse<T>): T {
+    suspend fun <T> execute(
+        maxAttempts: Int = 3,
+        suppressAbortLikeLogging: Boolean = false,
+        block: suspend () -> ApiResponse<T>,
+    ): T {
         var attempt = 0
         var lastNetworkException: Throwable? = null
-        while (attempt < 3) {
+        while (attempt < maxAttempts) {
             attempt += 1
             try {
                 val response = block()
@@ -43,9 +47,15 @@ class ApiExecutor(
                 throw error
             } catch (error: Throwable) {
                 lastNetworkException = error
-                platformLogError(LOG_TAG_API, "Network failure on attempt=$attempt: ${error.message}", error)
+                if (suppressAbortLikeLogging && error.isAbortLikeNetworkError()) {
+                    platformLogInfo(LOG_TAG_API, "Request aborted on attempt=$attempt: ${error.message}")
+                } else {
+                    platformLogError(LOG_TAG_API, "Network failure on attempt=$attempt: ${error.message}", error)
+                }
             }
-            delay(attempt * 300L)
+            if (attempt < maxAttempts) {
+                delay(attempt * 300L)
+            }
         }
         throw AppException.Network(lastNetworkException?.message ?: "Network request failed")
     }
@@ -67,4 +77,15 @@ class ApiExecutor(
             -> AppException.Server(message)
         }
     }
+}
+
+private fun Throwable.isAbortLikeNetworkError(): Boolean {
+    val text = buildString {
+        append(message.orEmpty())
+        append(' ')
+        append(toString())
+    }.lowercase()
+    return "ns_binding_aborted" in text ||
+        "aborterror" in text ||
+        "the operation was aborted" in text
 }

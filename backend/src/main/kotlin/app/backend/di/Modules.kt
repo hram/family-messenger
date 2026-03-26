@@ -28,6 +28,7 @@ import app.backend.service.PresenceService
 import app.backend.service.ProfileService
 import app.backend.service.RateLimitService
 import app.backend.service.SetupService
+import app.backend.service.SyncNotifier
 import app.backend.service.TokenService
 import org.koin.dsl.module
 
@@ -54,7 +55,8 @@ fun backendModule(appConfig: AppConfig) = module {
     single { AuthService(get(), get(), get()) }
     single { ClientLogService(get()) }
     single { ProfileService(get()) }
-    single { MessageService(get(), get(), get(), get()) }
+    single { SyncNotifier() }
+    single { MessageService(get(), get(), get(), get(), get()) }
     single { PresenceService(get()) }
     single { DeviceService(get()) }
     single { SetupService(get()) }

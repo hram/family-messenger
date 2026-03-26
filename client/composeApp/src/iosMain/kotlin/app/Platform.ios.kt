@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.plugins.HttpTimeout
 import platform.Foundation.NSBundle
 import platform.Foundation.NSLog
 import platform.Foundation.NSString
@@ -39,7 +40,11 @@ actual fun createPlatformServices(): PlatformServices {
             displayName = bundleName,
             defaultBaseUrl = "http://localhost:8081",
         ),
-        httpClient = HttpClient(Darwin),
+        httpClient = HttpClient(Darwin) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 10_000
+            }
+        },
         settingsStore = IosStore(defaults),
         secureStore = IosStore(defaults),
         geolocationService = IosGeolocationService(),

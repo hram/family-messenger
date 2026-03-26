@@ -57,11 +57,6 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.zxing.android.embedded)
         }
-        val androidFcmMain by getting {
-            dependencies {
-                implementation(libs.firebase.messaging)
-            }
-        }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
@@ -129,4 +124,8 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+dependencies {
+    add("fcmImplementation", libs.firebase.messaging)
 }

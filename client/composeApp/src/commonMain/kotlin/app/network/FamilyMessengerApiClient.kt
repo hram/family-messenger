@@ -33,11 +33,13 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.plugins.timeout
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 
 private const val LOG_TAG_API = "FamilyMessengerApi"
+private const val SYNC_REQUEST_TIMEOUT_MS = 30_000L
 
 class FamilyMessengerApiClient(
     private val httpClient: HttpClient,
@@ -153,10 +155,15 @@ class FamilyMessengerApiClient(
      * Используется polling'ом: при каждом опросе передаётся курсор последнего полученного сообщения.
      */
     suspend fun sync(sinceId: Long): SyncPayload =
-        executor.execute {
+        executor.execute(maxAttempts = 1, suppressAbortLikeLogging = true) {
             httpClient.get(url("/api/messages/sync")) {
                 authHeader()
                 url { parameters.append("since_id", sinceId.toString()) }
+                timeout {
+                    connectTimeoutMillis = SYNC_REQUEST_TIMEOUT_MS
+                    requestTimeoutMillis = SYNC_REQUEST_TIMEOUT_MS
+                    socketTimeoutMillis = SYNC_REQUEST_TIMEOUT_MS
+                }
             }.body()
         }
 

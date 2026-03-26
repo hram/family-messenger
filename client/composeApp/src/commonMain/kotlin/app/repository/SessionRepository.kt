@@ -5,6 +5,7 @@ import app.network.FamilyMessengerApiClient
 import app.storage.LocalDatabase
 import app.PlatformInfo
 import app.storage.SessionStore
+import app.dto.LocalDatabaseSnapshot
 import app.dto.StoredSession
 import app.dto.SyncState
 import com.familymessenger.contract.AuthPayload
@@ -55,8 +56,21 @@ class SessionRepository(
     }
 
     private fun persistAuth(auth: AuthPayload): StoredSession {
+        val existing = sessionStore.currentSession()
+        if (existing?.auth?.user?.id != auth.user.id || existing.auth.user.familyId != auth.user.familyId) {
+            localDatabase.update { snapshot -> snapshot.clearConversationData() }
+        }
         val session = StoredSession(auth)
         sessionStore.save(session)
         return session
     }
 }
+
+private fun LocalDatabaseSnapshot.clearConversationData(): LocalDatabaseSnapshot =
+    copy(
+        contacts = emptyList(),
+        messages = emptyList(),
+        pendingMessages = emptyList(),
+        syncState = SyncState(),
+        lastReadAtByChat = emptyMap(),
+    )

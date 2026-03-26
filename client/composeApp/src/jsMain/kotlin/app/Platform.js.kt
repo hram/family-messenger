@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.browser.window
 import kotlin.random.Random
 import org.w3c.dom.get
@@ -54,7 +55,11 @@ actual fun createPlatformServices(): PlatformServices = PlatformServices(
         displayName = "Web",
         defaultBaseUrl = window.location.origin,
     ),
-    httpClient = HttpClient(Js),
+    httpClient = HttpClient(Js) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 10_000
+        }
+    },
     settingsStore = BrowserStore("fm-settings"),
     secureStore = BrowserStore("fm-secure"),
     geolocationService = BrowserGeolocationService(),

@@ -17,15 +17,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+private const val LONG_POLL_TIMEOUT_MS = 20_000L
 
 class MessageService(
     private val repository: MessageRepository,
     private val deviceRepository: DeviceRepository,
     private val profileRepository: ProfileRepository,
     private val fcmPushService: FcmPushService,
+    private val syncNotifier: SyncNotifier,
 ) {
     private val pushScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val pushedUuids = ConcurrentHashMap.newKeySet<String>()
@@ -42,6 +45,7 @@ class MessageService(
             location = request.location,
             now = Clock.System.now(),
         )
+        syncNotifier.notifyFamily(principal.familyId)
         if (!pushedUuids.add(request.clientMessageUuid.trim())) return SendMessageResponse(payload)
         pushScope.launch {
             runCatching {
@@ -63,20 +67,40 @@ class MessageService(
         return SendMessageResponse(payload)
     }
 
+    /**
+     * Long-polling sync: сначала проверяет наличие новых данных, если их нет —
+     * подписывается на уведомления и ждёт до [LONG_POLL_TIMEOUT_MS] мс.
+     * Возвращает SyncPayload (может быть пустым при таймауте).
+     */
     suspend fun sync(principal: SessionPrincipal, sinceId: Long): SyncPayload {
-        if (sinceId < 0) {
-            throw ValidationException("since_id must be >= 0")
+        if (sinceId < 0) throw ValidationException("since_id must be >= 0")
+
+        // Подписываемся ДО первой проверки, чтобы не пропустить событие между
+        // проверкой и началом ожидания.
+        val subscription = syncNotifier.subscribe(principal.familyId)
+        return try {
+            val immediate = repository.sync(principal, sinceId)
+            if (immediate.nextSinceId > sinceId) return immediate
+
+            withTimeoutOrNull(LONG_POLL_TIMEOUT_MS) { subscription.channel.receive() }
+
+            repository.sync(principal, sinceId)
+        } finally {
+            syncNotifier.unsubscribe(subscription)
         }
-        return repository.sync(principal, sinceId)
     }
 
     suspend fun markDelivered(principal: SessionPrincipal, request: MarkDeliveredRequest): AckResponse {
         validateMessageIds(request.messageIds)
-        return AckResponse(repository.markDelivered(principal, request.messageIds.distinct(), Clock.System.now()))
+        val changed = repository.markDelivered(principal, request.messageIds.distinct(), Clock.System.now())
+        if (changed) syncNotifier.notifyFamily(principal.familyId)
+        return AckResponse(changed)
     }
 
     suspend fun markRead(principal: SessionPrincipal, request: MarkReadRequest): AckResponse {
         validateMessageIds(request.messageIds)
-        return AckResponse(repository.markRead(principal, request.messageIds.distinct(), Clock.System.now()))
+        val changed = repository.markRead(principal, request.messageIds.distinct(), Clock.System.now())
+        if (changed) syncNotifier.notifyFamily(principal.familyId)
+        return AckResponse(changed)
     }
 }

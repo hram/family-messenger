@@ -24,7 +24,6 @@ import app.usecase.ShareLocationUseCase
 import app.usecase.VerifyAdminAccessUseCase
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.ContentType
@@ -44,11 +43,6 @@ internal val clientJson = Json {
 
 fun configuredHttpClient(base: HttpClient): HttpClient = base.config {
     expectSuccess = false
-    install(HttpTimeout) {
-        requestTimeoutMillis = 10_000
-        connectTimeoutMillis = 10_000
-        socketTimeoutMillis = 10_000
-    }
     install(ContentNegotiation) {
         json(clientJson)
     }
@@ -112,7 +106,7 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { PresenceRepository(get(), get()) }
     single { DeviceRepository(get()) }
     single { SyncEngine(get(), get(), get(), get(), get(), get(), get()) }
-    single { LoginUseCase(get(), get()) }
+    single { LoginUseCase(get()) }
     single { LoadSetupStatusUseCase(get()) }
     single { VerifyAdminAccessUseCase(get()) }
     single { CreateMemberUseCase(get()) }

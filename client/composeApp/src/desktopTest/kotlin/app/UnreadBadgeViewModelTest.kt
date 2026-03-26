@@ -102,7 +102,7 @@ class UnreadBadgeViewModelTest {
             messagesRepository = messagesRepository,
             sessionRepository = sessionRepository,
             syncEngine = syncEngine,
-            login = LoginUseCase(sessionRepository, syncEngine),
+            login = LoginUseCase(sessionRepository),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
             createMember = CreateMemberUseCase(adminRepository),
@@ -206,7 +206,7 @@ class UnreadBadgeViewModelTest {
             messagesRepository = messagesRepository,
             sessionRepository = sessionRepository,
             syncEngine = syncEngine,
-            login = LoginUseCase(sessionRepository, syncEngine),
+            login = LoginUseCase(sessionRepository),
             loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
             verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
             createMember = CreateMemberUseCase(adminRepository),
@@ -262,6 +262,163 @@ class UnreadBadgeViewModelTest {
                 (viewModel.state.value.unreadCounts[FAMILY_GROUP_CHAT_ID] ?: 0) == 0
             }
             assertTrue(viewModel.state.value.messages.any { it.id == incomingFamilyMessage.id })
+        } finally {
+            viewModel.close()
+        }
+    }
+
+    @Test
+    fun unreadBadgeIgnoresMessagesFromOtherUsersSessionsThatTargetDifferentRecipient() = runBlocking {
+        val mother = userProfile(id = 10, name = "Мама", role = UserRole.PARENT)
+        val father = userProfile(id = 11, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 12, name = "Сын", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val fatherContact = ContactSummary(user = father, isOnline = true)
+        val childContact = ContactSummary(user = child, isOnline = true)
+        val apiClient = apiClient(mother, family, listOf(fatherContact, childContact))
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
+        val setupRepository = SetupRepository(apiClient)
+        val adminRepository = AdminRepository(apiClient)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        val viewModel = AppViewModel(
+            platformInfo = platformInfo(),
+            localDatabase = localDatabase,
+            settingsRepository = settingsRepository,
+            sessionStore = sessionStore,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            sessionRepository = sessionRepository,
+            syncEngine = syncEngine,
+            login = LoginUseCase(sessionRepository),
+            loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
+            verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
+            createMember = CreateMemberUseCase(adminRepository),
+            removeMember = RemoveMemberUseCase(adminRepository),
+            loadContacts = LoadContactsUseCase(contactsRepository),
+            sendTextMessageUseCase = SendTextMessageUseCase(messagesRepository),
+            sendQuickActionUseCase = SendQuickActionUseCase(messagesRepository),
+            shareLocationUseCase = ShareLocationUseCase(PresenceRepository(apiClient, NoOpGeolocationService), messagesRepository),
+        )
+
+        try {
+            sessionStore.save(
+                StoredSession(
+                    auth = AuthPayload(
+                        user = mother,
+                        family = family,
+                        session = DeviceSession(token = "test-token"),
+                    ),
+                ),
+            )
+            localDatabase.update { snapshot ->
+                snapshot.copy(
+                    contacts = listOf(fatherContact, childContact).map { StoredContact(it, Clock.System.now()) },
+                )
+            }
+
+            val staleDirectMessage = com.familymessenger.contract.MessagePayload(
+                id = 301,
+                clientMessageUuid = "33333333-3333-3333-3333-333333333333",
+                familyId = family.id,
+                senderUserId = father.id,
+                recipientUserId = child.id,
+                type = com.familymessenger.contract.MessageType.TEXT,
+                body = "Сообщение сыну",
+                createdAt = Instant.parse("2026-03-22T20:15:00Z"),
+            )
+            localDatabase.update { snapshot ->
+                snapshot.copy(messages = snapshot.messages + StoredMessage(staleDirectMessage, Clock.System.now()))
+            }
+
+            waitUntil("state updated after stale message") {
+                viewModel.state.value.contacts.size == 2
+            }
+            assertEquals(0, viewModel.state.value.unreadCounts[father.id] ?: 0)
+
+            viewModel.openChat(fatherContact)
+
+            waitUntil("father chat opens") {
+                viewModel.state.value.screen == Screen.CHAT && viewModel.state.value.selectedContactId == father.id
+            }
+            assertTrue(viewModel.state.value.messages.isEmpty())
+        } finally {
+            viewModel.close()
+        }
+    }
+
+    @Test
+    fun logoutClearsInviteCodeFromOnboardingState() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val apiClient = apiClient(parent, family, emptyList())
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
+        val setupRepository = SetupRepository(apiClient)
+        val adminRepository = AdminRepository(apiClient)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        val viewModel = AppViewModel(
+            platformInfo = platformInfo(),
+            localDatabase = localDatabase,
+            settingsRepository = settingsRepository,
+            sessionStore = sessionStore,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            sessionRepository = sessionRepository,
+            syncEngine = syncEngine,
+            login = LoginUseCase(sessionRepository),
+            loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
+            verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
+            createMember = CreateMemberUseCase(adminRepository),
+            removeMember = RemoveMemberUseCase(adminRepository),
+            loadContacts = LoadContactsUseCase(contactsRepository),
+            sendTextMessageUseCase = SendTextMessageUseCase(messagesRepository),
+            sendQuickActionUseCase = SendQuickActionUseCase(messagesRepository),
+            shareLocationUseCase = ShareLocationUseCase(PresenceRepository(apiClient, NoOpGeolocationService), messagesRepository),
+        )
+
+        try {
+            viewModel.updateInviteCode("OLD-INVITE-CODE")
+            sessionStore.save(
+                StoredSession(
+                    auth = AuthPayload(
+                        user = parent,
+                        family = family,
+                        session = DeviceSession(token = "test-token"),
+                    ),
+                ),
+            )
+
+            viewModel.logout()
+
+            waitUntil("logout clears invite code") {
+                !viewModel.state.value.isBusy && viewModel.state.value.onboarding.inviteCode.isEmpty()
+            }
+            assertEquals("", viewModel.state.value.onboarding.inviteCode)
         } finally {
             viewModel.close()
         }

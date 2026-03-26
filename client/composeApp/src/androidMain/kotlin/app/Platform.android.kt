@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import java.util.UUID
 
 private object AndroidRuntime {
@@ -93,7 +94,13 @@ actual fun createPlatformServices(): PlatformServices {
             displayName = "Android",
             defaultBaseUrl = "http://82.97.243.127:8080",
         ),
-        httpClient = HttpClient(OkHttp),
+        httpClient = HttpClient(OkHttp) {
+            install(HttpTimeout) {
+                connectTimeoutMillis = 5_000
+                socketTimeoutMillis = 35_000
+                requestTimeoutMillis = 35_000
+            }
+        },
         settingsStore = AndroidStore(context.getSharedPreferences("family-messenger-settings", Context.MODE_PRIVATE)),
         secureStore = AndroidStore(context.getSharedPreferences("family-messenger-secure", Context.MODE_PRIVATE)),
         geolocationService = AndroidGeolocationService(),
