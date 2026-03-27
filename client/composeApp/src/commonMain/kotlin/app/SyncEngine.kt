@@ -62,8 +62,12 @@ class SyncEngine(
         if (!settings.pollingEnabled) return SyncCycleResult.IDLE
 
         val contacts = contactsRepository.fetchContacts()
-        val sinceId = messagesRepository.syncCursor()
-        val payload = messagesRepository.fetchSync(sinceId)
+        val payload = try {
+            messagesRepository.fetchSync(messagesRepository.syncState())
+        } catch (error: AppException.SyncResetRequired) {
+            messagesRepository.resetAfterServerReset(error.serverInstanceId)
+            messagesRepository.fetchSync(messagesRepository.syncState())
+        }
         cycles += 1
 
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id

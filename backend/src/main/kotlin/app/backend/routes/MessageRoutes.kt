@@ -45,7 +45,8 @@ fun Route.messageRoutes(messageService: MessageService) {
     }) {
         val principal = requireNotNull(call.sessionPrincipal)
         val sinceId = call.request.queryParameters["since_id"]?.toLongOrNull() ?: 0L
-        call.respondOk(messageService.sync(principal, sinceId))
+        val serverInstanceId = call.request.queryParameters["server_instance_id"]?.trim()?.takeIf { it.isNotEmpty() }
+        call.respondOk(messageService.sync(principal, sinceId, serverInstanceId))
     }
 
     post("/messages/mark-delivered", {

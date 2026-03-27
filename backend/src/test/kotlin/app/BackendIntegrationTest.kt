@@ -841,6 +841,27 @@ class BackendIntegrationTest {
     }
 
     @Test
+    fun syncRejectsCursorFromDifferentServerInstance() = backendTestApp {
+        val child = login(
+            inviteCode = "CHILD-DEMO",
+            platform = "desktop",
+        ).json()
+
+        val serverInstanceId = child.data().req("serverInstanceId").text()
+        assertTrue(serverInstanceId.isNotBlank())
+
+        val response = authorizedGet(
+            "/api/messages/sync?since_id=1&server_instance_id=stale-server-instance",
+            child.token(),
+        )
+
+        assertEquals(HttpStatusCode.Conflict, response.status)
+        val body = response.json()
+        assertEquals(ErrorCode.SYNC_RESET_REQUIRED.name, body.errorCode())
+        assertEquals(serverInstanceId, body["error"]!!.jsonObject.req("details").obj().req("serverInstanceId").text())
+    }
+
+    @Test
     fun sendMessageIsDeduplicatedByClientMessageUuid() = backendTestApp {
         val parent = login(
             inviteCode = "PARENT-DEMO",

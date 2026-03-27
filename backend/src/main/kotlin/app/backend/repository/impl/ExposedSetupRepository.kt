@@ -15,6 +15,7 @@ import kotlinx.datetime.Instant
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import java.util.UUID
 
 class ExposedSetupRepository : SetupRepository {
     private val inviteCodeGenerator = InviteCodeGenerator()
@@ -27,6 +28,7 @@ class ExposedSetupRepository : SetupRepository {
         SetupStatusResponse(
             initialized = setupRow != null,
             familyName = familyName,
+            serverInstanceId = setupRow?.get(SystemSetupTable.serverInstanceId).orEmpty(),
         )
     }
 
@@ -75,6 +77,7 @@ class ExposedSetupRepository : SetupRepository {
             it[SystemSetupTable.familyId] = familyId
             it[SystemSetupTable.masterPasswordHash] = masterPasswordHash
             it[initializedAt] = now
+            it[serverInstanceId] = UUID.randomUUID().toString()
         }
 
         SetupBootstrapResponse(

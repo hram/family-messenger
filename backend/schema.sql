@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS system_setup (
     id INTEGER PRIMARY KEY,
     family_id BIGINT NULL,
     master_password_hash VARCHAR(255) NOT NULL,
-    initialized_at TIMESTAMPTZ NOT NULL
+    initialized_at TIMESTAMPTZ NOT NULL,
+    server_instance_id VARCHAR(64) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS users (

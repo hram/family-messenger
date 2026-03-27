@@ -4,6 +4,7 @@ import app.backend.db.AuthTokensTable
 import app.backend.db.DevicesTable
 import app.backend.db.FamiliesTable
 import app.backend.db.InvitesTable
+import app.backend.db.SystemSetupTable
 import app.backend.db.UsersTable
 import app.backend.db.dbQuery
 import app.backend.error.ConflictException
@@ -207,6 +208,7 @@ class ExposedAuthRepository : AuthRepository {
                 token = rawToken,
                 expiresAt = expiresAt,
             ),
+            serverInstanceId = SystemSetupTable.selectAll().singleOrNull()?.get(SystemSetupTable.serverInstanceId).orEmpty(),
         )
     }
 }

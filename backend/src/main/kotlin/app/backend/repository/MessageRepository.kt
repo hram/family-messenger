@@ -18,7 +18,7 @@ interface MessageRepository {
         now: Instant,
     ): MessagePayload
 
-    suspend fun sync(principal: SessionPrincipal, sinceId: Long, limit: Int = 500): SyncPayload
+    suspend fun sync(principal: SessionPrincipal, sinceId: Long, serverInstanceId: String?, limit: Int = 500): SyncPayload
     suspend fun markDelivered(principal: SessionPrincipal, messageIds: List<Long>, now: Instant): Boolean
     suspend fun markRead(principal: SessionPrincipal, messageIds: List<Long>, now: Instant): Boolean
 }

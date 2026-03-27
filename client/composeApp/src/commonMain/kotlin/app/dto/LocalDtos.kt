@@ -28,6 +28,7 @@ data class PendingMessage(
 @Serializable
 data class SyncState(
     val sinceId: Long = 0,
+    val serverInstanceId: String = "",
 )
 
 @Serializable

@@ -4,6 +4,7 @@ import app.backend.db.FamiliesTable
 import app.backend.db.LocationEventsTable
 import app.backend.db.MessageReceiptsTable
 import app.backend.db.MessagesTable
+import app.backend.db.SystemSetupTable
 import app.backend.db.SyncEventsTable
 import app.backend.db.UsersTable
 import app.backend.model.SessionPrincipal
@@ -20,6 +21,7 @@ import com.familymessenger.contract.UserRole
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import java.security.SecureRandom
 
 internal const val ENTITY_MESSAGE = "message"
@@ -34,6 +36,9 @@ internal fun recordSyncEvent(familyId: Long, entityType: String, entityId: Long,
         it[createdAt] = now
     }
 }
+
+internal fun currentServerInstanceId(): String =
+    SystemSetupTable.selectAll().singleOrNull()?.get(SystemSetupTable.serverInstanceId).orEmpty()
 
 internal fun ResultRow.toUserProfile(): UserProfile = UserProfile(
     id = this[UsersTable.id],

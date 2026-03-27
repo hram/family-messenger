@@ -7,8 +7,10 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.UUID
 
 class DatabaseFactory(
     private val config: DatabaseConfig,
@@ -45,6 +47,7 @@ class DatabaseFactory(
                 exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS family_id BIGINT")
                 exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS master_password_hash VARCHAR(255)")
                 exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS initialized_at TIMESTAMP")
+                exec("ALTER TABLE system_setup ADD COLUMN IF NOT EXISTS server_instance_id VARCHAR(64)")
                 exec(
                     """
                     UPDATE invites AS i
@@ -107,6 +110,14 @@ class DatabaseFactory(
                         it[SystemSetupTable.familyId] = familyId
                         it[masterPasswordHash] = "legacy-bootstrap-placeholder"
                         it[initializedAt] = now()
+                        it[serverInstanceId] = UUID.randomUUID().toString()
+                    }
+                }
+                SystemSetupTable.selectAll().forEach { row ->
+                    if (row[SystemSetupTable.serverInstanceId].isBlank()) {
+                        SystemSetupTable.update({ SystemSetupTable.id eq row[SystemSetupTable.id] }) {
+                            it[serverInstanceId] = UUID.randomUUID().toString()
+                        }
                     }
                 }
             }
@@ -151,6 +162,7 @@ class DatabaseFactory(
                         it[SystemSetupTable.familyId] = familyId
                         it[masterPasswordHash] = "seed-bootstrap-placeholder"
                         it[initializedAt] = now()
+                        it[serverInstanceId] = UUID.randomUUID().toString()
                     }
                 }
             }

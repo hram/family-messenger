@@ -8,6 +8,7 @@ import app.backend.db.UsersTable
 import app.backend.db.dbQuery
 import app.backend.error.ConflictException
 import app.backend.error.NotFoundException
+import app.backend.error.SyncResetRequiredException
 import app.backend.model.SessionPrincipal
 import app.backend.repository.MessageRepository
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
@@ -18,10 +19,6 @@ import com.familymessenger.contract.SystemEventPayload
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
@@ -107,7 +104,26 @@ class ExposedMessageRepository : MessageRepository {
         MessagesTable.selectAll().where { MessagesTable.id eq messageId }.single().toMessagePayload()
     }
 
-    override suspend fun sync(principal: SessionPrincipal, sinceId: Long, limit: Int): SyncPayload = dbQuery {
+    override suspend fun sync(
+        principal: SessionPrincipal,
+        sinceId: Long,
+        serverInstanceId: String?,
+        limit: Int,
+    ): SyncPayload = dbQuery {
+        val currentServerInstanceId = currentServerInstanceId()
+        if (sinceId > 0 && serverInstanceId != null && serverInstanceId != currentServerInstanceId) {
+            throw SyncResetRequiredException(
+                message = "Client sync state belongs to a different server instance",
+                details = mapOf("serverInstanceId" to currentServerInstanceId),
+            )
+        }
+        if (sinceId > 0 && serverInstanceId == null) {
+            throw SyncResetRequiredException(
+                message = "Client sync state does not include a server instance id",
+                details = mapOf("serverInstanceId" to currentServerInstanceId),
+            )
+        }
+
         val events = SyncEventsTable.selectAll().where {
             (SyncEventsTable.familyId eq principal.familyId) and (SyncEventsTable.id greater sinceId)
         }.orderBy(SyncEventsTable.id to SortOrder.ASC).limit(limit).toList()
@@ -168,6 +184,7 @@ class ExposedMessageRepository : MessageRepository {
             messages = messages,
             receipts = receipts,
             events = systemEvents,
+            serverInstanceId = currentServerInstanceId,
         )
     }
 

@@ -17,6 +17,7 @@ object SystemSetupTable : Table("system_setup") {
     val familyId = long("family_id").nullable()
     val masterPasswordHash = varchar("master_password_hash", 255)
     val initializedAt = timestamp("initialized_at")
+    val serverInstanceId = varchar("server_instance_id", 64).default("")
     override val primaryKey = PrimaryKey(id)
 }
 

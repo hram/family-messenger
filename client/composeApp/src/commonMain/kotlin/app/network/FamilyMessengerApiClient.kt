@@ -154,11 +154,16 @@ class FamilyMessengerApiClient(
      * Возвращает новые сообщения и квитанции (доставка/прочтение) начиная с [sinceId].
      * Используется polling'ом: при каждом опросе передаётся курсор последнего полученного сообщения.
      */
-    suspend fun sync(sinceId: Long): SyncPayload =
+    suspend fun sync(sinceId: Long, serverInstanceId: String?): SyncPayload =
         executor.execute(maxAttempts = 1, suppressAbortLikeLogging = true) {
             httpClient.get(url("/api/messages/sync")) {
                 authHeader()
-                url { parameters.append("since_id", sinceId.toString()) }
+                url {
+                    parameters.append("since_id", sinceId.toString())
+                    serverInstanceId?.takeIf { it.isNotBlank() }?.let {
+                        parameters.append("server_instance_id", it)
+                    }
+                }
                 timeout {
                     connectTimeoutMillis = SYNC_REQUEST_TIMEOUT_MS
                     requestTimeoutMillis = SYNC_REQUEST_TIMEOUT_MS

@@ -69,6 +69,7 @@ class ApiExecutor(
             }
             ErrorCode.INVALID_REQUEST -> AppException.Validation(message)
             ErrorCode.CONFLICT -> AppException.Conflict(message)
+            ErrorCode.SYNC_RESET_REQUIRED -> AppException.SyncResetRequired(message, error.details["serverInstanceId"])
             ErrorCode.RATE_LIMITED -> AppException.RateLimited(message)
             ErrorCode.FORBIDDEN,
             ErrorCode.NOT_FOUND,

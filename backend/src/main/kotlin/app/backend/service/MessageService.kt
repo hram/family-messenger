@@ -72,19 +72,19 @@ class MessageService(
      * подписывается на уведомления и ждёт до [LONG_POLL_TIMEOUT_MS] мс.
      * Возвращает SyncPayload (может быть пустым при таймауте).
      */
-    suspend fun sync(principal: SessionPrincipal, sinceId: Long): SyncPayload {
+    suspend fun sync(principal: SessionPrincipal, sinceId: Long, serverInstanceId: String?): SyncPayload {
         if (sinceId < 0) throw ValidationException("since_id must be >= 0")
 
         // Подписываемся ДО первой проверки, чтобы не пропустить событие между
         // проверкой и началом ожидания.
         val subscription = syncNotifier.subscribe(principal.familyId)
         return try {
-            val immediate = repository.sync(principal, sinceId)
+            val immediate = repository.sync(principal, sinceId, serverInstanceId)
             if (immediate.nextSinceId > sinceId) return immediate
 
             withTimeoutOrNull(LONG_POLL_TIMEOUT_MS) { subscription.channel.receive() }
 
-            repository.sync(principal, sinceId)
+            repository.sync(principal, sinceId, serverInstanceId)
         } finally {
             syncNotifier.unsubscribe(subscription)
         }

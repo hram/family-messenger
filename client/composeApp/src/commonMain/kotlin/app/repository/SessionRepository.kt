@@ -27,8 +27,12 @@ class SessionRepository(
                 user = profile.user,
                 family = profile.family,
                 session = existing.auth.session,
+                serverInstanceId = profile.serverInstanceId,
             ),
         )
+        if (existing.auth.serverInstanceId != refreshed.auth.serverInstanceId) {
+            localDatabase.update { snapshot -> snapshot.clearConversationData() }
+        }
         sessionStore.save(refreshed)
         return refreshed
     }
@@ -57,7 +61,11 @@ class SessionRepository(
 
     private fun persistAuth(auth: AuthPayload): StoredSession {
         val existing = sessionStore.currentSession()
-        if (existing?.auth?.user?.id != auth.user.id || existing.auth.user.familyId != auth.user.familyId) {
+        if (
+            existing?.auth?.user?.id != auth.user.id ||
+            existing.auth.user.familyId != auth.user.familyId ||
+            existing.auth.serverInstanceId != auth.serverInstanceId
+        ) {
             localDatabase.update { snapshot -> snapshot.clearConversationData() }
         }
         val session = StoredSession(auth)

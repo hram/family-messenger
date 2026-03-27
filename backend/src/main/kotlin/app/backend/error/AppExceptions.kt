@@ -27,5 +27,8 @@ class NotFoundException(message: String) :
 class ConflictException(message: String, details: Map<String, String> = emptyMap()) :
     AppException(HttpStatusCode.Conflict, ErrorCode.CONFLICT, message, details)
 
+class SyncResetRequiredException(message: String, details: Map<String, String> = emptyMap()) :
+    AppException(HttpStatusCode.Conflict, ErrorCode.SYNC_RESET_REQUIRED, message, details)
+
 class RateLimitedException(message: String) :
     AppException(HttpStatusCode.TooManyRequests, ErrorCode.RATE_LIMITED, message)

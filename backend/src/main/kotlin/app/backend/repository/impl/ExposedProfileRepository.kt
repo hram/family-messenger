@@ -1,6 +1,7 @@
 package app.backend.repository.impl
 
 import app.backend.db.FamiliesTable
+import app.backend.db.SystemSetupTable
 import app.backend.db.UsersTable
 import app.backend.db.dbQuery
 import app.backend.error.NotFoundException
@@ -32,6 +33,7 @@ class ExposedProfileRepository : ProfileRepository {
                 id = familyId,
                 name = familyRow[FamiliesTable.name],
             ),
+            serverInstanceId = SystemSetupTable.selectAll().singleOrNull()?.get(SystemSetupTable.serverInstanceId).orEmpty(),
         )
     }
 

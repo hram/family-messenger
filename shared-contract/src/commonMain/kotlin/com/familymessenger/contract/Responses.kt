@@ -12,6 +12,7 @@ data class HealthResponse(
 data class ProfileResponse(
     val user: UserProfile,
     val family: FamilySummary,
+    val serverInstanceId: String = "",
 )
 
 @Serializable

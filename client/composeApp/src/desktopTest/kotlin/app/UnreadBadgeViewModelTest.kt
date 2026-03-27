@@ -31,6 +31,7 @@ import com.familymessenger.contract.AuthPayload
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.ContactsResponse
 import com.familymessenger.contract.DeviceSession
+import com.familymessenger.contract.ErrorCode
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.FamilySummary
 import com.familymessenger.contract.PlatformType
@@ -468,7 +469,7 @@ class UnreadBadgeViewModelTest {
             ),
         )
 
-        val payload = messagesRepository.fetchSync(messagesRepository.syncCursor())
+        val payload = messagesRepository.fetchSync(messagesRepository.syncState())
         messagesRepository.applyTick(emptyList(), payload)
 
         val stored = localDatabase.snapshot().messages.single { it.payload.id == incomingMessage.id }.payload
@@ -564,6 +565,123 @@ class UnreadBadgeViewModelTest {
         }
     }
 
+    @Test
+    fun syncResetClearsStaleLocalStateAndPerformsFullResync() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 3, name = "Поля", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val childContact = ContactSummary(user = child, isOnline = true)
+        val incomingMessage = com.familymessenger.contract.MessagePayload(
+            id = 505,
+            clientMessageUuid = "55555555-5555-5555-5555-555555555555",
+            familyId = family.id,
+            senderUserId = child.id,
+            recipientUserId = parent.id,
+            type = com.familymessenger.contract.MessageType.TEXT,
+            body = "После ресета",
+            createdAt = Instant.parse("2026-03-23T18:10:00Z"),
+        )
+        var syncCalls = 0
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/contacts" -> respondJson(ApiResponse(success = true, data = ContactsResponse(contacts = listOf(childContact))))
+                "/api/messages/sync" -> {
+                    syncCalls += 1
+                    val sinceId = request.url.parameters["since_id"]
+                    if (syncCalls == 1) {
+                        respondJson(
+                            ApiResponse<Unit>(
+                                success = false,
+                                error = com.familymessenger.contract.ApiError(
+                                    code = ErrorCode.SYNC_RESET_REQUIRED,
+                                    message = "reset required",
+                                    details = mapOf("serverInstanceId" to "server-v2"),
+                                ),
+                            ),
+                            status = HttpStatusCode.Conflict,
+                        )
+                    } else {
+                        assertEquals("0", sinceId)
+                        assertEquals("server-v2", request.url.parameters["server_instance_id"])
+                        respondJson(
+                            ApiResponse(
+                                success = true,
+                                data = SyncPayload(
+                                    nextSinceId = 1,
+                                    messages = listOf(incomingMessage),
+                                    receipts = emptyList(),
+                                    events = emptyList(),
+                                    serverInstanceId = "server-v2",
+                                ),
+                            ),
+                        )
+                    }
+                }
+                "/api/messages/mark-delivered" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
+                else -> error("Unexpected path in test: ${request.url.encodedPath}")
+            }
+        }
+        val httpClient = configuredHttpClient(HttpClient(engine))
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val apiClient = FamilyMessengerApiClient(
+            httpClient = httpClient,
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            executor = ApiExecutor(sessionStore),
+        )
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+        localDatabase.update { snapshot ->
+            snapshot.copy(
+                messages = snapshot.messages + StoredMessage(
+                    payload = incomingMessage.copy(id = 999, body = "Старое сообщение"),
+                    updatedAt = Clock.System.now(),
+                ),
+                syncState = app.dto.SyncState(sinceId = 77, serverInstanceId = "server-v1"),
+            )
+        }
+        sessionStore.save(
+            StoredSession(
+                auth = AuthPayload(
+                    user = parent,
+                    family = family,
+                    session = DeviceSession(token = "test-token"),
+                    serverInstanceId = "server-v1",
+                ),
+            ),
+        )
+
+        try {
+            syncEngine.start(scope)
+
+            waitUntil("sync reset is recovered") {
+                localDatabase.snapshot().messages.any { it.payload.id == incomingMessage.id } &&
+                    localDatabase.snapshot().syncState.serverInstanceId == "server-v2"
+            }
+
+            val snapshot = localDatabase.snapshot()
+            assertEquals(listOf(incomingMessage.id), snapshot.messages.mapNotNull { it.payload.id })
+            assertEquals(1, snapshot.syncState.sinceId)
+            assertEquals("server-v2", snapshot.syncState.serverInstanceId)
+        } finally {
+            syncEngine.stop()
+            scope.cancel()
+        }
+    }
+
     private fun apiClient(
         currentUser: UserProfile,
         family: FamilySummary,
@@ -616,9 +734,12 @@ class UnreadBadgeViewModelTest {
         lastSeenAt = null,
     )
 
-    private inline fun <reified T> MockRequestHandleScope.respondJson(body: ApiResponse<T>) = respond(
+    private inline fun <reified T> MockRequestHandleScope.respondJson(
+        body: ApiResponse<T>,
+        status: HttpStatusCode = HttpStatusCode.OK,
+    ) = respond(
         content = json.encodeToString(body),
-        status = HttpStatusCode.OK,
+        status = status,
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
     )
 }

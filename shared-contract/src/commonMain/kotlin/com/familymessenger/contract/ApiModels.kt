@@ -37,6 +37,9 @@ enum class ErrorCode {
     @SerialName("CONFLICT")
     CONFLICT,
 
+    @SerialName("SYNC_RESET_REQUIRED")
+    SYNC_RESET_REQUIRED,
+
     @SerialName("RATE_LIMITED")
     RATE_LIMITED,
 
@@ -149,6 +152,7 @@ data class AuthPayload(
     val user: UserProfile,
     val family: FamilySummary,
     val session: DeviceSession,
+    val serverInstanceId: String = "",
 )
 
 @Serializable
@@ -211,12 +215,14 @@ data class SyncPayload(
     val messages: List<MessagePayload>,
     val receipts: List<MessageReceiptPayload>,
     val events: List<SystemEventPayload>,
+    val serverInstanceId: String = "",
 )
 
 @Serializable
 data class SetupStatusResponse(
     val initialized: Boolean,
     val familyName: String? = null,
+    val serverInstanceId: String = "",
 )
 
 @Serializable

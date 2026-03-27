@@ -7,6 +7,7 @@ import app.storage.SessionStore
 import app.dto.PendingMessage
 import app.dto.StoredContact
 import app.dto.StoredMessage
+import app.dto.StoredSession
 import app.dto.SyncState
 import app.randomUuid
 import com.familymessenger.contract.ContactSummary
@@ -144,7 +145,13 @@ class MessagesRepository(
         }
     }
 
-    suspend fun fetchSync(sinceId: Long): SyncPayload = apiClient.sync(sinceId)
+    suspend fun fetchSync(syncState: SyncState): SyncPayload {
+        val session = sessionStore.currentSession()
+        val serverInstanceId = syncState.serverInstanceId.ifBlank {
+            session?.auth?.serverInstanceId.orEmpty()
+        }.ifBlank { null } ?: session?.auth?.serverInstanceId
+        return apiClient.sync(syncState.sinceId, serverInstanceId)
+    }
 
     fun applyTick(contacts: List<ContactSummary>, payload: SyncPayload) {
         val currentUserId = sessionStore.currentSession()?.auth?.user?.id
@@ -156,7 +163,10 @@ class MessagesRepository(
             snapshot.copy(
                 contacts = contacts.map { StoredContact(it, Clock.System.now()) },
                 messages = merged,
-                syncState = SyncState(payload.nextSinceId),
+                syncState = SyncState(
+                    sinceId = payload.nextSinceId,
+                    serverInstanceId = payload.serverInstanceId,
+                ),
             )
         }
     }
@@ -164,6 +174,19 @@ class MessagesRepository(
     fun pendingCount(): Int = localDatabase.snapshot().pendingMessages.size
 
     fun syncCursor(): Long = localDatabase.snapshot().syncState.sinceId
+
+    fun syncState(): SyncState = localDatabase.snapshot().syncState
+
+    fun resetAfterServerReset(serverInstanceId: String?) {
+        localDatabase.update { snapshot ->
+            snapshot.copy(
+                messages = emptyList(),
+                pendingMessages = emptyList(),
+                syncState = SyncState(serverInstanceId = serverInstanceId.orEmpty()),
+                lastReadAtByChat = emptyMap(),
+            )
+        }
+    }
 
     private suspend fun queueMessage(request: SendMessageRequest): MessagePayload {
         val session = sessionStore.currentSession() ?: throw AppException.Unauthorized("Please authenticate first")

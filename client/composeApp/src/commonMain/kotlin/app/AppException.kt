@@ -5,6 +5,7 @@ sealed class AppException(message: String) : RuntimeException(message) {
     class Unauthorized(message: String) : AppException(message)
     class Validation(message: String) : AppException(message)
     class Conflict(message: String) : AppException(message)
+    class SyncResetRequired(message: String, val serverInstanceId: String?) : AppException(message)
     class RateLimited(message: String) : AppException(message)
     class Server(message: String) : AppException(message)
 }
