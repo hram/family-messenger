@@ -37,17 +37,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.UserRole
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun AdminScreen(state: AppUiState, viewModel: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         TgTopBar(
-            title = "Administration",
+            title = stringResource(Res.string.screen_admin),
             subtitle = state.currentUser?.displayName ?: "",
             leadingContent = {
                 IconButton(onClick = viewModel::openSettings) {
-                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
+                    Icon(AppIcons.Back, contentDescription = stringResource(Res.string.content_desc_back), tint = Color.White)
                 }
             },
         )
@@ -68,12 +70,12 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
         if (!state.admin.unlocked) {
             Surface(color = CardBg, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Master password required", fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                    Text("Administration is locked until the master password is confirmed.", color = TextSecondary)
+                    Text(stringResource(Res.string.admin_unlock_title), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(Res.string.admin_unlock_description), color = TextSecondary)
                     PasswordField(
                         value = state.admin.masterPassword,
                         onValueChange = viewModel::updateAdminMasterPassword,
-                        label = "Master Password",
+                        label = stringResource(Res.string.admin_master_password_label),
                         modifier = Modifier.testTag(AppTestTags.AdminPassword),
                     )
                     Button(
@@ -82,7 +84,7 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                         colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
                         shape = RoundedCornerShape(10.dp),
                     ) {
-                        Text("Unlock")
+                        Text(stringResource(Res.string.admin_unlock_button))
                     }
                 }
             }
@@ -91,9 +93,9 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
 
         Surface(color = CardBg, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Family Members", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(Res.string.admin_members_title), fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (state.admin.members.isEmpty()) {
-                    Text("No family members yet", color = TextSecondary)
+                    Text(stringResource(Res.string.admin_members_empty), color = TextSecondary)
                 } else {
                     state.admin.members.forEach { member ->
                         var showQr by remember { mutableStateOf(false) }
@@ -111,16 +113,28 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                val memberRole = member.role.localizedLabel().lowercase()
+                                val memberAdminSuffix = if (member.isAdmin) stringResource(Res.string.settings_role_admin_suffix) else ""
+                                val memberRegisteredStatus = if (member.isRegistered) {
+                                    stringResource(Res.string.admin_member_registered)
+                                } else {
+                                    stringResource(Res.string.admin_member_invite_pending)
+                                }
+                                val memberActiveStatus = if (member.isActive) {
+                                    stringResource(Res.string.admin_member_active)
+                                } else {
+                                    stringResource(Res.string.admin_member_removed)
+                                }
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(member.displayName, fontWeight = FontWeight.Medium)
                                     Text(
                                         buildString {
-                                            append(member.role.name.lowercase())
-                                            if (member.isAdmin) append(" · administrator")
+                                            append(memberRole)
+                                            append(memberAdminSuffix)
                                             append(" · ")
-                                            append(if (member.isRegistered) "registered" else "invite pending")
+                                            append(memberRegisteredStatus)
                                             append(" · ")
-                                            append(if (member.isActive) "active" else "removed")
+                                            append(memberActiveStatus)
                                             append(" · ")
                                             append(member.inviteCode)
                                         },
@@ -134,14 +148,14 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                 ) {
                                     InviteActionButton(
                                         icon = AppIcons.QrCode,
-                                        label = "QR-код",
+                                        label = stringResource(Res.string.action_qr_code),
                                         onClick = { showQr = true },
                                     )
                                     TextButton(
                                         onClick = { viewModel.removeAdminMember(member.inviteCode) },
                                         modifier = Modifier.testTag(AppTestTags.AdminMemberRemovePrefix + member.inviteCode),
                                     ) {
-                                        Text("Remove", color = DestructiveRed)
+                                        Text(stringResource(Res.string.action_remove), color = DestructiveRed)
                                     }
                                 }
                             }
@@ -154,15 +168,15 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
 
         Surface(color = CardBg, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Add family member", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(Res.string.admin_add_member_title), fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 TgTextField(
                     value = state.admin.newMemberName,
                     onValueChange = viewModel::updateAdminNewMemberName,
-                    label = "Display Name",
+                    label = stringResource(Res.string.admin_member_display_name_label),
                     modifier = Modifier.testTag(AppTestTags.AdminMemberName),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(UserRole.PARENT to "Parent", UserRole.CHILD to "Child").forEach { (role, label) ->
+                    listOf(UserRole.PARENT, UserRole.CHILD).forEach { role ->
                         val selected = state.admin.newMemberRole == role
                         Box(
                             modifier = Modifier
@@ -174,7 +188,7 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                 .testTag(AppTestTags.AdminMemberRolePrefix + role.name.lowercase()),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(label, color = if (selected) Color.White else TgBlueDark, fontWeight = FontWeight.Medium)
+                            Text(role.localizedLabel(), color = if (selected) Color.White else TgBlueDark, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -185,8 +199,8 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Administrator", fontWeight = FontWeight.Medium, color = TextPrimary)
-                            Text("Can open admin section and manage family members", fontSize = 12.sp, color = TextSecondary)
+                            Text(stringResource(Res.string.admin_member_admin_toggle_label), fontWeight = FontWeight.Medium, color = TextPrimary)
+                            Text(stringResource(Res.string.admin_member_admin_toggle_desc), fontSize = 12.sp, color = TextSecondary)
                         }
                         Switch(
                             checked = state.admin.newMemberIsAdmin,
@@ -205,7 +219,7 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
                     shape = RoundedCornerShape(10.dp),
                 ) {
-                    Text("Create Invite")
+                    Text(stringResource(Res.string.admin_create_invite))
                 }
             }
         }

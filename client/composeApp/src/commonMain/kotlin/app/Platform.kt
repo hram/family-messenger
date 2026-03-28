@@ -1,6 +1,7 @@
 package app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
 import com.familymessenger.contract.LocationPayload
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
@@ -44,6 +45,11 @@ expect fun randomUuid(): String
 expect fun platformLogInfo(tag: String, message: String)
 
 expect fun platformLogError(tag: String, message: String, throwable: Throwable? = null)
+
+expect fun currentLanguageCode(): String
+
+@Composable
+expect fun appLogoPainter(): Painter
 
 @Composable
 expect fun platformBackHandler(enabled: Boolean, onBack: () -> Unit)

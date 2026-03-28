@@ -19,8 +19,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import androidx.compose.foundation.Image
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -37,12 +39,12 @@ fun QrCodeDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Закрыть", color = TgBlue)
+                Text(stringResource(Res.string.action_close), color = TgBlue)
             }
         },
         title = {
             Text(
-                "QR-код приглашения",
+                stringResource(Res.string.qr_dialog_title),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -61,7 +63,7 @@ fun QrCodeDialog(
 
                 Image(
                     painter = painter,
-                    contentDescription = "QR-код для $displayName",
+                    contentDescription = stringResource(Res.string.qr_dialog_content_description, displayName),
                     modifier = Modifier
                         .size(220.dp)
                         .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
@@ -77,7 +79,7 @@ fun QrCodeDialog(
                     letterSpacing = 2.sp,
                 )
                 Text(
-                    "Отсканируйте QR или введите код и адрес сервера вручную",
+                    stringResource(Res.string.qr_dialog_hint),
                     fontSize = 12.sp,
                     color = TextSecondary,
                 )

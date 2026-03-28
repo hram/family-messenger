@@ -2,7 +2,10 @@ package app
 
 import app.storage.ClientSettingsRepository
 import app.ui.SetupMemberInputState
+import app.ui.UiText
+import app.ui.uiText
 import app.usecase.BootstrapSystemUseCase
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +28,7 @@ data class SetupUiState(
     ),
     val generatedInvites: List<SetupInviteSummary> = emptyList(),
     val isBusy: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
 )
 
 class SetupViewModel(
@@ -77,9 +80,9 @@ class SetupViewModel(
     fun proceedFromPasswordStep() {
         val s = state.value
         when {
-            s.masterPassword.isBlank() -> mutate { copy(errorMessage = "Master password is required") }
-            s.masterPasswordConfirm.isBlank() -> mutate { copy(errorMessage = "Please confirm the master password") }
-            s.masterPassword != s.masterPasswordConfirm -> mutate { copy(errorMessage = "Master password confirmation does not match") }
+            s.masterPassword.isBlank() -> mutate { copy(errorMessage = uiText(Res.string.setup_error_master_password_required)) }
+            s.masterPasswordConfirm.isBlank() -> mutate { copy(errorMessage = uiText(Res.string.setup_error_confirm_master_password_required)) }
+            s.masterPassword != s.masterPasswordConfirm -> mutate { copy(errorMessage = uiText(Res.string.setup_error_password_mismatch)) }
             else -> mutate { copy(step = 2, errorMessage = null) }
         }
     }
@@ -90,10 +93,10 @@ class SetupViewModel(
         runBusy {
             val s = state.value
             when {
-                s.masterPassword != s.masterPasswordConfirm -> error("Master password confirmation does not match")
-                s.familyName.isBlank() -> error("Family name is required")
-                s.members.isEmpty() -> error("At least one member is required")
-                s.members.any { it.displayName.isBlank() } -> error("All members must have a name")
+                s.masterPassword != s.masterPasswordConfirm -> throw IllegalStateException(SetupError.PASSWORD_MISMATCH.name)
+                s.familyName.isBlank() -> throw IllegalStateException(SetupError.FAMILY_NAME_REQUIRED.name)
+                s.members.isEmpty() -> throw IllegalStateException(SetupError.MEMBER_REQUIRED.name)
+                s.members.any { it.displayName.isBlank() } -> throw IllegalStateException(SetupError.MEMBER_NAME_REQUIRED.name)
             }
             settingsRepository.updateServerBaseUrl(s.serverUrl)
             val response = bootstrapSystem(
@@ -124,7 +127,19 @@ class SetupViewModel(
         scope.launch {
             mutate { copy(isBusy = true, errorMessage = null) }
             runCatching { block() }
-                .onFailure { mutate { copy(errorMessage = it.message ?: "Операция завершилась с ошибкой") } }
+                .onFailure { error ->
+                    mutate {
+                        copy(
+                            errorMessage = when (error.message?.let { runCatching { SetupError.valueOf(it) }.getOrNull() }) {
+                                SetupError.PASSWORD_MISMATCH -> uiText(Res.string.setup_error_password_mismatch)
+                                SetupError.FAMILY_NAME_REQUIRED -> uiText(Res.string.setup_error_family_name_required)
+                                SetupError.MEMBER_REQUIRED -> uiText(Res.string.setup_error_member_required)
+                                SetupError.MEMBER_NAME_REQUIRED -> uiText(Res.string.setup_error_member_name_required)
+                                null -> error.message?.let(UiText::Dynamic) ?: uiText(Res.string.error_operation_failed)
+                            }
+                        )
+                    }
+                }
             mutate { copy(isBusy = false) }
         }
     }
@@ -132,6 +147,13 @@ class SetupViewModel(
     private fun mutate(transform: SetupUiState.() -> SetupUiState) {
         mutableState.value = mutableState.value.transform()
     }
+}
+
+private enum class SetupError {
+    PASSWORD_MISMATCH,
+    FAMILY_NAME_REQUIRED,
+    MEMBER_REQUIRED,
+    MEMBER_NAME_REQUIRED,
 }
 
 private fun <T> List<T>.updated(index: Int, transform: (T) -> T): List<T> =

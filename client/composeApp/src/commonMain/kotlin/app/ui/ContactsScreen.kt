@@ -29,26 +29,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.ContactSummary
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ContactsScreen(state: AppUiState, viewModel: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         TgTopBar(
-            title = "Chats",
+            title = stringResource(Res.string.screen_chats),
             subtitle = state.currentUser?.displayName ?: "",
             trailingContent = {
                 IconButton(
                     onClick = viewModel::openSettings,
                     modifier = Modifier.testTag(AppTestTags.TopBarSettings),
                 ) {
-                    Icon(AppIcons.Settings, contentDescription = "Settings", tint = Color.White)
+                    Icon(AppIcons.Settings, contentDescription = stringResource(Res.string.content_desc_settings), tint = Color.White)
                 }
                 IconButton(
                     onClick = viewModel::refreshContacts,
                     modifier = Modifier.testTag(AppTestTags.TopBarRefresh),
                 ) {
-                    Icon(AppIcons.Refresh, contentDescription = "Refresh", tint = Color.White)
+                    Icon(AppIcons.Refresh, contentDescription = stringResource(Res.string.content_desc_refresh), tint = Color.White)
                 }
             },
         )
@@ -78,13 +80,13 @@ internal fun ContactsPanel(
             ) {
                 Icon(AppIcons.Chat, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                 Text(
-                    "No contacts yet",
+                    stringResource(Res.string.contacts_empty_title),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary,
                 )
                 Text(
-                    "Register a second member and refresh",
+                    stringResource(Res.string.contacts_empty_subtitle),
                     fontSize = 14.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,

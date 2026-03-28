@@ -1,10 +1,10 @@
 package app.ui
 
+import app.appLogoPainter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import com.familymessenger.composeapp.generated.resources.Res
-import com.familymessenger.composeapp.generated.resources.ic_launcher
-import org.jetbrains.compose.resources.painterResource
+import com.familymessenger.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +45,7 @@ internal fun SplashScreen(state: AppUiState) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Image(
-                painter = painterResource(Res.drawable.ic_launcher),
+                painter = appLogoPainter(),
                 contentDescription = null,
                 modifier = Modifier
                     .size(92.dp)
@@ -56,13 +56,13 @@ internal fun SplashScreen(state: AppUiState) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    "Family Messenger",
+                    stringResource(Res.string.app_name),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary,
                 )
                 Text(
-                    "Семейный чат",
+                    stringResource(Res.string.app_tagline),
                     fontSize = 15.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
@@ -86,8 +86,8 @@ internal fun SplashScreen(state: AppUiState) {
                     )
                     Text(
                         text = when {
-                            state.currentUser != null -> "Загружаем чаты ${state.currentUser.displayName}..."
-                            else -> "Подготавливаем рабочее пространство..."
+                            state.currentUser != null -> stringResource(Res.string.splash_loading_chats, state.currentUser.displayName)
+                            else -> stringResource(Res.string.splash_preparing)
                         },
                         fontSize = 14.sp,
                         color = TextPrimary,

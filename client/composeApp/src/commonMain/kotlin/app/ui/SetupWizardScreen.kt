@@ -53,8 +53,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
+import org.jetbrains.compose.resources.stringResource
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 @Composable
@@ -149,10 +151,10 @@ private fun StepProgressBar(currentStep: Int) {
 @Composable
 private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
     SetupCard {
-        Text("Защита администратора", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+        Text(stringResource(Res.string.setup_password_title), fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Придумайте пароль для панели администрирования. Через неё можно добавлять и удалять участников.",
+            stringResource(Res.string.setup_password_description),
             fontSize = 14.sp,
             color = TextSecondary,
             lineHeight = 20.sp,
@@ -179,7 +181,7 @@ private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
                     modifier = Modifier.size(18.dp).padding(top = 1.dp),
                 )
                 Text(
-                    "Если забудете этот пароль — доступ к панели администрирования будет потерян. Запишите его в надёжном месте.",
+                    stringResource(Res.string.setup_password_warning),
                     fontSize = 13.sp,
                     color = WarnText,
                     lineHeight = 18.sp,
@@ -192,14 +194,14 @@ private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
         SetupTextField(
             value = state.serverUrl,
             onValueChange = viewModel::updateServerUrl,
-            label = "Адрес сервера",
+            label = stringResource(Res.string.field_server_url),
             modifier = Modifier.testTag(AppTestTags.SetupBaseUrl),
         )
 
         PasswordField(
             value = state.masterPassword,
             onValueChange = viewModel::updateMasterPassword,
-            label = "Пароль администратора",
+            label = stringResource(Res.string.setup_master_password_label),
             modifier = Modifier.testTag(AppTestTags.SetupMasterPassword),
             showStrength = true,
         )
@@ -207,12 +209,12 @@ private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
         PasswordField(
             value = state.masterPasswordConfirm,
             onValueChange = viewModel::updateMasterPasswordConfirm,
-            label = "Повторите пароль",
+            label = stringResource(Res.string.setup_master_password_confirm_label),
             modifier = Modifier.testTag(AppTestTags.SetupMasterPasswordConfirm),
             errorMessage = if (
                 state.masterPasswordConfirm.isNotEmpty() &&
                 state.masterPassword != state.masterPasswordConfirm
-            ) "Пароли не совпадают" else null,
+            ) stringResource(Res.string.setup_passwords_mismatch) else null,
         )
 
         Spacer(Modifier.height(4.dp))
@@ -220,7 +222,7 @@ private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
         val canProceed = state.masterPassword.length >= 8 &&
                 state.masterPassword == state.masterPasswordConfirm
         SetupPrimaryButton(
-            text = "Далее",
+            text = stringResource(Res.string.action_next),
             onClick = viewModel::proceedFromPasswordStep,
             enabled = canProceed,
             modifier = Modifier.testTag(AppTestTags.SetupNext),
@@ -234,10 +236,10 @@ private fun StepPassword(state: SetupUiState, viewModel: SetupViewModel) {
 private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SetupCard {
-            Text("Участники семьи", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+            Text(stringResource(Res.string.setup_members_title), fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Добавьте всех, кто будет пользоваться чатом.",
+                stringResource(Res.string.setup_members_description),
                 fontSize = 14.sp,
                 color = TextSecondary,
                 lineHeight = 20.sp,
@@ -246,8 +248,8 @@ private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
             SetupTextField(
                 value = state.familyName,
                 onValueChange = viewModel::updateFamilyName,
-                label = "Название семьи",
-                placeholder = "Например: Семья Ивановых",
+                label = stringResource(Res.string.setup_family_name_label),
+                placeholder = stringResource(Res.string.setup_family_name_placeholder),
                 modifier = Modifier.testTag(AppTestTags.SetupFamilyName),
             )
         }
@@ -285,7 +287,7 @@ private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
                     tint = TgBlue,
                     modifier = Modifier.size(16.dp),
                 )
-                Text("Добавить участника", fontSize = 14.sp, color = TgBlue)
+                Text(stringResource(Res.string.setup_add_member), fontSize = 14.sp, color = TgBlue)
             }
         }
 
@@ -295,13 +297,13 @@ private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
                 state.members.all { it.displayName.isNotBlank() }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SetupSecondaryButton(
-                text = "Назад",
+                text = stringResource(Res.string.action_back),
                 onClick = { viewModel.goToStep(1) },
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupBack),
                 showBackArrow = true,
             )
             SetupPrimaryButton(
-                text = "Создать",
+                text = stringResource(Res.string.action_create),
                 onClick = viewModel::submit,
                 enabled = canCreate,
                 modifier = Modifier.weight(1f).testTag(AppTestTags.SetupSubmit),
@@ -337,13 +339,13 @@ private fun MemberCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Участник ${index + 1}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                Text(stringResource(Res.string.setup_member_number, index + 1), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
                 if (showRemove) {
                     TextButton(
                         onClick = onRemove,
                         modifier = Modifier.testTag(AppTestTags.SetupMemberRemovePrefix + index),
                     ) {
-                        Text("Удалить", color = TgBlueDark, fontSize = 13.sp)
+                        Text(stringResource(Res.string.action_remove), color = TgBlueDark, fontSize = 13.sp)
                     }
                 }
             }
@@ -351,14 +353,14 @@ private fun MemberCard(
             SetupTextField(
                 value = member.displayName,
                 onValueChange = onNameChange,
-                label = "Имя",
-                placeholder = "Например: Мама",
+                label = stringResource(Res.string.setup_member_name_label),
+                placeholder = stringResource(Res.string.setup_member_name_placeholder),
                 modifier = Modifier.testTag(AppTestTags.SetupMemberNamePrefix + index),
             )
 
             // Role picker
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(UserRole.PARENT to "Родитель", UserRole.CHILD to "Ребёнок").forEach { (role, label) ->
+                listOf(UserRole.PARENT, UserRole.CHILD).forEach { role ->
                     val selected = member.role == role
                     Box(
                         modifier = Modifier
@@ -376,7 +378,7 @@ private fun MemberCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            label,
+                            role.localizedLabel(),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = if (selected) Color.White else TextSecondary,
@@ -425,9 +427,9 @@ private fun MemberCard(
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Администратор", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                            Text(stringResource(Res.string.admin_member_admin_toggle_label), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
                             Text(
-                                "Доступ к панели управления участниками",
+                                stringResource(Res.string.setup_admin_description),
                                 fontSize = 12.sp,
                                 color = TextSecondary,
                             )
@@ -439,7 +441,7 @@ private fun MemberCard(
                             shape = RoundedCornerShape(10.dp),
                         ) {
                             Text(
-                                text = if (member.isAdmin) "Да" else "Нет",
+                                text = if (member.isAdmin) stringResource(Res.string.label_yes) else stringResource(Res.string.label_no),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (member.isAdmin) Color.White else TgBlueDark,
@@ -476,7 +478,7 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Готово!",
+                stringResource(Res.string.setup_done_title),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextPrimary,
@@ -485,7 +487,7 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Отправьте каждому участнику его код или покажите QR — они отсканируют и сразу войдут.",
+                stringResource(Res.string.setup_done_description),
                 fontSize = 14.sp,
                 color = TextSecondary,
                 lineHeight = 20.sp,
@@ -499,7 +501,7 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
         }
 
         SetupPrimaryButton(
-            text = "Войти в приложение",
+            text = stringResource(Res.string.setup_enter_app),
             onClick = viewModel::finish,
             modifier = Modifier.testTag(AppTestTags.SetupFinish),
         )
@@ -552,7 +554,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                                 shape = RoundedCornerShape(10.dp),
                             ) {
                                 Text(
-                                    "Администратор",
+                                    stringResource(Res.string.admin_member_admin_toggle_label),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color.White,
@@ -562,7 +564,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                         }
                     }
                     Text(
-                        invite.role.name.lowercase().replaceFirstChar { it.uppercaseChar() },
+                        invite.role.localizedLabel(),
                         fontSize = 12.sp,
                         color = LinkBlue.copy(alpha = 0.8f),
                     )
@@ -589,13 +591,13 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
             ) {
                 InviteActionButton(
                     icon = AppIcons.Copy,
-                    label = "Скопировать",
+                    label = stringResource(Res.string.action_copy),
                     modifier = Modifier.weight(1f),
                     onClick = { /* TODO: clipboard copy invite.inviteCode */ },
                 )
                 InviteActionButton(
                     icon = AppIcons.QrCode,
-                    label = "QR-код",
+                    label = stringResource(Res.string.action_qr_code),
                     modifier = Modifier.weight(1f),
                     onClick = { showQr = true },
                 )
@@ -681,7 +683,7 @@ internal fun PasswordField(
                         IconButton(onClick = { onValueChange("") }) {
                             Icon(
                                 imageVector = AppIcons.Clear,
-                                contentDescription = "Очистить",
+                                contentDescription = stringResource(Res.string.action_clear),
                                 tint = TextSecondary,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -691,7 +693,7 @@ internal fun PasswordField(
                     IconButton(onClick = { visible = !visible }) {
                         Icon(
                             imageVector = if (visible) AppIcons.EyeOff else AppIcons.Eye,
-                            contentDescription = if (visible) "Скрыть" else "Показать",
+                            contentDescription = if (visible) stringResource(Res.string.action_hide) else stringResource(Res.string.action_show),
                             tint = TextSecondary,
                             modifier = Modifier.size(18.dp),
                         )
@@ -750,9 +752,9 @@ private fun passwordStrength(pw: String): StrengthResult {
     if (pw.any { it.isDigit() })     score++
     if (pw.any { !it.isLetterOrDigit() }) score++
     return when {
-        score <= 1 -> StrengthResult(0.20f, "Слабый пароль",   StrengthWeak)
-        score <= 3 -> StrengthResult(0.60f, "Средний пароль",  StrengthMedium)
-        else       -> StrengthResult(1.00f, "Надёжный пароль", StrengthStrong)
+        score <= 1 -> StrengthResult(0.20f, stringResource(Res.string.password_strength_weak), StrengthWeak)
+        score <= 3 -> StrengthResult(0.60f, stringResource(Res.string.password_strength_medium), StrengthMedium)
+        else -> StrengthResult(1.00f, stringResource(Res.string.password_strength_strong), StrengthStrong)
     }
 }
 

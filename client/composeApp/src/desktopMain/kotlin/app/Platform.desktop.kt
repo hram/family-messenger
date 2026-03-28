@@ -1,7 +1,10 @@
 package app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
 import com.familymessenger.contract.PlatformType
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.ic_launcher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -9,9 +12,11 @@ import java.awt.SystemTray
 import java.awt.Toolkit
 import java.awt.TrayIcon
 import java.awt.image.BufferedImage
+import java.util.Locale
 import java.util.UUID
 import java.util.prefs.Preferences
 import javax.swing.SwingUtilities
+import org.jetbrains.compose.resources.painterResource
 
 private class DesktopStore(private val preferences: Preferences) : KeyValueStore {
     override fun getString(key: String): String? = preferences.get(key, null)
@@ -94,6 +99,11 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
     println("ERROR [$tag] $message")
     throwable?.printStackTrace()
 }
+
+actual fun currentLanguageCode(): String = Locale.getDefault().toLanguageTag()
+
+@Composable
+actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

@@ -41,6 +41,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 // ── Theme wrapper ─────────────────────────────────────────────────────────────
 @Composable
@@ -120,7 +122,7 @@ fun FamilyMessengerApp(viewModel: AppViewModel, setupViewModel: SetupViewModel? 
 
 // ── Banner ────────────────────────────────────────────────────────────────────
 @Composable
-private fun TgBanner(errorMessage: String?, statusMessage: String?, onDismiss: (() -> Unit)?) {
+private fun TgBanner(errorMessage: UiText?, statusMessage: UiText?, onDismiss: (() -> Unit)?) {
     val banner = errorMessage ?: statusMessage ?: return
     val isError = errorMessage != null
     Surface(
@@ -137,14 +139,14 @@ private fun TgBanner(errorMessage: String?, statusMessage: String?, onDismiss: (
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = banner,
+                text = banner.resolve(),
                 modifier = Modifier.weight(1f),
                 fontSize = 14.sp,
                 color = TextPrimary,
             )
             if (onDismiss != null) {
                 TextButton(onClick = onDismiss) {
-                    Text("OK", color = TgBlue, fontWeight = FontWeight.Medium)
+                    Text(stringResource(Res.string.action_ok), color = TgBlue, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -164,20 +166,20 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                 .background(SidebarBg),
         ) {
             TgTopBar(
-                title = "Chats",
+                title = stringResource(Res.string.screen_chats),
                 subtitle = state.currentUser?.displayName ?: "",
                 trailingContent = {
                     IconButton(
                         onClick = viewModel::openSettings,
                         modifier = Modifier.testTag(AppTestTags.TopBarSettings),
                     ) {
-                        Icon(AppIcons.Settings, contentDescription = "Settings", tint = Color.White)
+                        Icon(AppIcons.Settings, contentDescription = stringResource(Res.string.content_desc_settings), tint = Color.White)
                     }
                     IconButton(
                         onClick = viewModel::refreshContacts,
                         modifier = Modifier.testTag(AppTestTags.TopBarRefresh),
                     ) {
-                        Icon(AppIcons.Refresh, contentDescription = "Refresh", tint = Color.White)
+                        Icon(AppIcons.Refresh, contentDescription = stringResource(Res.string.content_desc_refresh), tint = Color.White)
                     }
                 },
             )
@@ -201,7 +203,7 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                 val contactStatus = selectedContact.subtitleText()
                 Column(modifier = Modifier.fillMaxSize()) {
                     TgTopBar(
-                        title = state.selectedContactName ?: "Chat",
+                        title = state.selectedContactName ?: stringResource(Res.string.screen_chat),
                         subtitle = contactStatus,
                     )
                     ChatPanel(state = state, viewModel = viewModel)
@@ -216,7 +218,7 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(AppIcons.Chat, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
-                        Text("Select a contact", color = TextSecondary, fontSize = 15.sp)
+                        Text(stringResource(Res.string.chat_select_contact), color = TextSecondary, fontSize = 15.sp)
                     }
                 }
             }

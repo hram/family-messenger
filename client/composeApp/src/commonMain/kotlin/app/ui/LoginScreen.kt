@@ -1,13 +1,12 @@
 package app.ui
 
 import app.AppViewModel
+import app.appLogoPainter
 import app.isQrScannerSupported
 import app.QrScannerSheet
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import com.familymessenger.composeapp.generated.resources.Res
-import com.familymessenger.composeapp.generated.resources.ic_launcher
-import org.jetbrains.compose.resources.painterResource
+import com.familymessenger.composeapp.generated.resources.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -119,7 +119,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Image(
-                    painter = painterResource(Res.drawable.ic_launcher),
+                    painter = appLogoPainter(),
                     contentDescription = null,
                     modifier = Modifier
                         .size(44.dp)
@@ -127,13 +127,13 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
-                        "Family Messenger",
+                        stringResource(Res.string.app_name),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black,
                     )
                     Text(
-                        "Семейный чат",
+                        stringResource(Res.string.app_tagline),
                         fontSize = 13.sp,
                         color = TextSecondary,
                     )
@@ -142,21 +142,21 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
 
             // Server URL field
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Адрес сервера", fontSize = 13.sp, color = TextSecondary)
+                Text(stringResource(Res.string.field_server_url), fontSize = 13.sp, color = TextSecondary)
                 OutlinedTextField(
                     value = state.onboarding.baseUrl,
                     onValueChange = viewModel::updateBaseUrl,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(AppTestTags.OnboardingBaseUrl),
-                    placeholder = { Text("http://192.168.1.10:8081", color = TextSecondary, fontSize = 14.sp) },
+                    placeholder = { Text(stringResource(Res.string.login_server_url_placeholder), color = TextSecondary, fontSize = 14.sp) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     shape = RoundedCornerShape(8.dp),
                     colors = loginFieldColors(),
                 )
                 Text(
-                    "IP-адрес вашего домашнего сервера",
+                    stringResource(Res.string.login_server_url_hint),
                     fontSize = 12.sp,
                     color = TextSecondary,
                 )
@@ -164,7 +164,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
 
             // Invite code field
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Код приглашения", fontSize = 13.sp, color = TextSecondary)
+                Text(stringResource(Res.string.login_invite_code_label), fontSize = 13.sp, color = TextSecondary)
                 OutlinedTextField(
                     value = state.onboarding.inviteCode,
                     onValueChange = viewModel::updateInviteCode,
@@ -183,7 +183,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                             IconButton(onClick = { viewModel.updateInviteCode("") }) {
                                 Icon(
                                     imageVector = AppIcons.Clear,
-                                    contentDescription = "Очистить",
+                                    contentDescription = stringResource(Res.string.action_clear),
                                     tint = TextSecondary,
                                     modifier = Modifier.size(16.dp),
                                 )
@@ -194,7 +194,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                     colors = loginFieldColors(),
                 )
                 Text(
-                    "Код из приложения администратора",
+                    stringResource(Res.string.login_invite_code_hint),
                     fontSize = 12.sp,
                     color = TextSecondary,
                 )
@@ -208,7 +208,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     HorizontalDivider(modifier = Modifier.weight(1f), color = CardBorder, thickness = 0.5.dp)
-                    Text("или войти через QR", fontSize = 12.sp, color = TextSecondary)
+                    Text(stringResource(Res.string.login_or_via_qr), fontSize = 12.sp, color = TextSecondary)
                     HorizontalDivider(modifier = Modifier.weight(1f), color = CardBorder, thickness = 0.5.dp)
                 }
                 OutlinedButton(
@@ -224,7 +224,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.size(8.dp))
-                    Text("Сканировать QR-код", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(Res.string.login_scan_qr), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -244,7 +244,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                     disabledContainerColor = CardBorder,
                 ),
             ) {
-                Text("Войти", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(Res.string.login_submit), fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
 
             // Platform status row
@@ -265,7 +265,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                             .background(OnlineGreen),
                     )
                     Text(
-                        "Платформа: ${state.platformName}",
+                        stringResource(Res.string.login_platform, state.platformName),
                         fontSize = 12.sp,
                         color = TextSecondary,
                     )
@@ -306,4 +306,3 @@ private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = TgBlue,
     focusedLabelColor = TgBlue,
 )
-

@@ -10,8 +10,11 @@ import android.os.Build
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.core.app.NotificationCompat
 import com.familymessenger.contract.PlatformType
+import com.familymessenger.client.R
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -117,6 +120,12 @@ actual fun platformLogInfo(tag: String, message: String) {
 actual fun platformLogError(tag: String, message: String, throwable: Throwable?) {
     Log.e(tag, message, throwable)
 }
+
+actual fun currentLanguageCode(): String =
+    AndroidRuntime.context.resources.configuration.locales[0]?.toLanguageTag() ?: "en"
+
+@Composable
+actual fun appLogoPainter(): Painter = painterResource(R.mipmap.ic_launcher)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) {

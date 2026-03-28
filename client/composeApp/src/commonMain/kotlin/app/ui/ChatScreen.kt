@@ -35,20 +35,22 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.MessageType
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ChatScreen(state: AppUiState, viewModel: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         TgTopBar(
-            title = state.selectedContactName ?: "Chat",
-            subtitle = "offline-first · polling sync",
+            title = state.selectedContactName ?: stringResource(Res.string.screen_chat),
+            subtitle = stringResource(Res.string.chat_subtitle),
             leadingContent = {
                 IconButton(onClick = viewModel::backToContacts) {
-                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
+                    Icon(AppIcons.Back, contentDescription = stringResource(Res.string.content_desc_back), tint = Color.White)
                 }
             },
         )
@@ -73,7 +75,7 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
         ) {
             if (state.messages.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No messages yet", color = TextSecondary, fontSize = 14.sp)
+                    Text(stringResource(Res.string.chat_no_messages), color = TextSecondary, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(
@@ -116,7 +118,7 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 IconButton(onClick = {}) {
-                    Icon(AppIcons.Attach, contentDescription = "Attach", tint = TextSecondary)
+                    Icon(AppIcons.Attach, contentDescription = stringResource(Res.string.content_desc_attach), tint = TextSecondary)
                 }
                 OutlinedTextField(
                     value = state.draftMessage,
@@ -124,7 +126,7 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                     modifier = Modifier
                         .weight(1f)
                         .testTag(AppTestTags.ChatInput),
-                    placeholder = { Text("Message", color = TextSecondary, fontSize = 14.sp) },
+                    placeholder = { Text(stringResource(Res.string.chat_input_placeholder), color = TextSecondary, fontSize = 14.sp) },
                     shape = RoundedCornerShape(22.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = InputBorder,
@@ -142,7 +144,7 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                         .clickable(onClick = viewModel::sendCurrentDraft),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(AppIcons.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(AppIcons.Send, contentDescription = stringResource(Res.string.content_desc_send), tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -222,7 +224,7 @@ private fun MessageBubble(
                             Icon(AppIcons.Location, contentDescription = null, tint = TgBlueDark, modifier = Modifier.size(28.dp))
                         }
                         Text(
-                            message.location?.label ?: "My location",
+                            message.location?.label ?: stringResource(Res.string.chat_location_default),
                             fontSize = 16.sp,
                             color = TextPrimary,
                         )
@@ -253,9 +255,10 @@ private fun MessageBubble(
 private fun senderNameColor(name: String): Color =
     AvatarPalette[name.hashCode().and(0x7FFFFFFF) % AvatarPalette.size]
 
+@Composable
 private fun MessageStatus.prettyLabel(): String = when (this) {
-    MessageStatus.LOCAL_PENDING -> "pending"
-    MessageStatus.SENT          -> "sent"
-    MessageStatus.DELIVERED     -> "delivered"
-    MessageStatus.READ          -> "read"
+    MessageStatus.LOCAL_PENDING -> stringResource(Res.string.msg_status_pending)
+    MessageStatus.SENT -> stringResource(Res.string.msg_status_sent)
+    MessageStatus.DELIVERED -> stringResource(Res.string.msg_status_delivered)
+    MessageStatus.READ -> stringResource(Res.string.msg_status_read)
 }

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App general -->
+    <string name="app_name">Family Messenger</string>
+    <string name="app_tagline">Семейный чат</string>
+
+    <!-- Common actions -->
+    <string name="action_ok">ОК</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_clear">Очистить</string>
+    <string name="action_copy">Скопировать</string>
+    <string name="action_remove">Удалить</string>
+    <string name="action_next">Далее</string>
+    <string name="action_back">Назад</string>
+    <string name="action_create">Создать</string>
+    <string name="action_qr_code">QR-код</string>
+    <string name="action_show">Показать</string>
+    <string name="action_hide">Скрыть</string>
+    <string name="action_close">Закрыть</string>
+    <string name="action_scan_qr">Сканировать QR-код</string>
+    <string name="action_login">Войти</string>
+    <string name="action_logout">Выйти</string>
+    <string name="action_refresh">Обновить</string>
+    <string name="action_send">Отправить</string>
+    <string name="action_unlock">Разблокировать</string>
+
+    <!-- Roles -->
+    <string name="role_parent">Родитель</string>
+    <string name="role_child">Ребёнок</string>
+    <string name="role_admin">Администратор</string>
+    <string name="role_family">Семья</string>
+
+    <!-- Labels -->
+    <string name="label_yes">Да</string>
+    <string name="label_no">Нет</string>
+    <string name="label_unknown">—</string>
+
+    <!-- Shared field labels -->
+    <string name="field_server_url">Адрес сервера</string>
+    <string name="field_invite_code">Код приглашения</string>
+    <string name="field_master_password">Мастер-пароль</string>
+    <string name="field_admin_password">Пароль администратора</string>
+    <string name="field_confirm_password">Повторите пароль</string>
+    <string name="field_family_name">Название семьи</string>
+    <string name="field_name">Имя</string>
+    <string name="field_display_name">Отображаемое имя</string>
+
+    <!-- Login screen -->
+    <string name="login_invite_code_label">Код приглашения</string>
+    <string name="login_invite_code_hint">Код из приложения администратора</string>
+    <string name="login_server_url_hint">IP-адрес вашего домашнего сервера</string>
+    <string name="login_server_url_placeholder">http://192.168.1.10:8081</string>
+    <string name="login_or_via_qr">или войти через QR</string>
+    <string name="login_scan_qr">Сканировать QR-код</string>
+    <string name="login_submit">Войти</string>
+    <string name="login_platform">Платформа: %1$s</string>
+
+    <!-- Splash screen -->
+    <string name="splash_loading_chats">Загружаем чаты %1$s...</string>
+    <string name="splash_preparing">Подготавливаем рабочее пространство...</string>
+
+    <!-- Contacts screen -->
+    <string name="screen_chats">Чаты</string>
+    <string name="contacts_empty_title">Пока нет контактов</string>
+    <string name="contacts_empty_subtitle">Зарегистрируйте второго участника и обновите список</string>
+    <string name="contact_group_chat">семейный чат</string>
+    <string name="contact_online">в сети</string>
+    <string name="contact_offline_role">офлайн · %1$s</string>
+    <string name="contact_select">Выберите контакт</string>
+
+    <!-- Chat screen -->
+    <string name="screen_chat">Чат</string>
+    <string name="chat_subtitle">офлайн-режим · синхронизация</string>
+    <string name="chat_no_messages">Пока нет сообщений</string>
+    <string name="chat_input_placeholder">Сообщение</string>
+    <string name="chat_location_default">Моя геолокация</string>
+    <string name="chat_select_contact">Выберите контакт</string>
+    <string name="msg_status_pending">отправляется</string>
+    <string name="msg_status_sent">отправлено</string>
+    <string name="msg_status_delivered">доставлено</string>
+    <string name="msg_status_read">прочитано</string>
+
+    <!-- Settings screen -->
+    <string name="screen_settings">Настройки</string>
+    <string name="settings_server_base_url">Адрес сервера</string>
+    <string name="settings_polling_sync">Синхронизация опросом</string>
+    <string name="settings_push_notifications">Push-уведомления</string>
+    <string name="settings_user">Пользователь</string>
+    <string name="settings_role">Роль</string>
+    <string name="settings_role_admin_suffix"> · администратор</string>
+    <string name="settings_platform">Платформа</string>
+    <string name="settings_pending">Ожидающие</string>
+    <string name="settings_cursor">Курсор</string>
+    <string name="settings_open_admin">Панель администратора</string>
+    <string name="settings_logout">Выйти</string>
+
+    <!-- Admin screen -->
+    <string name="screen_admin">Администрирование</string>
+    <string name="admin_unlock_title">Требуется мастер-пароль</string>
+    <string name="admin_unlock_description">Панель заблокирована до подтверждения мастер-пароля.</string>
+    <string name="admin_master_password_label">Мастер-пароль</string>
+    <string name="admin_unlock_button">Разблокировать</string>
+    <string name="admin_members_title">Участники семьи</string>
+    <string name="admin_members_empty">Пока нет участников</string>
+    <string name="admin_member_registered">зарегистрирован</string>
+    <string name="admin_member_invite_pending">ожидает приглашения</string>
+    <string name="admin_member_active">активен</string>
+    <string name="admin_member_removed">удалён</string>
+    <string name="admin_add_member_title">Добавить участника</string>
+    <string name="admin_member_display_name_label">Отображаемое имя</string>
+    <string name="admin_member_admin_toggle_label">Администратор</string>
+    <string name="admin_member_admin_toggle_desc">Доступ к панели управления участниками</string>
+    <string name="admin_create_invite">Создать приглашение</string>
+
+    <!-- QR dialog -->
+    <string name="qr_dialog_title">QR-код приглашения</string>
+    <string name="qr_dialog_hint">Отсканируйте QR или введите код и адрес сервера вручную</string>
+    <string name="qr_dialog_content_description">QR-код для %1$s</string>
+
+    <!-- Setup wizard -->
+    <string name="setup_password_title">Защита администратора</string>
+    <string name="setup_password_description">Придумайте пароль для панели администрирования. Через неё можно добавлять и удалять участников.</string>
+    <string name="setup_password_warning">Если забудете этот пароль, доступ к панели администрирования будет потерян. Запишите его в надёжном месте.</string>
+    <string name="setup_master_password_label">Пароль администратора</string>
+    <string name="setup_master_password_confirm_label">Повторите пароль</string>
+    <string name="setup_passwords_mismatch">Пароли не совпадают</string>
+    <string name="setup_members_title">Участники семьи</string>
+    <string name="setup_members_description">Добавьте всех, кто будет пользоваться чатом.</string>
+    <string name="setup_family_name_label">Название семьи</string>
+    <string name="setup_family_name_placeholder">Например: Семья Ивановых</string>
+    <string name="setup_add_member">Добавить участника</string>
+    <string name="setup_member_number">Участник %1$d</string>
+    <string name="setup_member_name_label">Имя</string>
+    <string name="setup_member_name_placeholder">Например: Мама</string>
+    <string name="setup_admin_description">Доступ к панели управления участниками</string>
+    <string name="setup_done_title">Готово!</string>
+    <string name="setup_done_description">Отправьте каждому участнику его код или покажите QR — они отсканируют и сразу войдут.</string>
+    <string name="setup_enter_app">Войти в приложение</string>
+
+    <!-- Password strength -->
+    <string name="password_strength_weak">Слабый пароль</string>
+    <string name="password_strength_medium">Средний пароль</string>
+    <string name="password_strength_strong">Надёжный пароль</string>
+
+    <!-- Status and error messages -->
+    <string name="status_system_not_initialized">Система еще не настроена. Завершите настройку в веб-клиенте.</string>
+    <string name="error_session_expired">Сессия истекла. Войдите заново.</string>
+    <string name="error_server_unavailable_local_session">Сервер недоступен. Используется локальная сессия.</string>
+    <string name="error_refresh_session_failed_local_session">Не удалось обновить сессию. Используется локальная сессия.</string>
+    <string name="status_session_active">Сессия активна</string>
+    <string name="status_admin_access_granted">Доступ администратора открыт</string>
+    <string name="status_invite_created">Приглашение для участника создано</string>
+    <string name="status_member_removed">Участник удалён</string>
+    <string name="status_location_sent">Локация отправлена</string>
+    <string name="status_location_unavailable">Локация недоступна на этой платформе</string>
+    <string name="status_base_url_saved">Адрес сервера сохранён</string>
+    <string name="status_session_cleared">Сессия очищена</string>
+    <string name="error_operation_failed">Операция завершилась с ошибкой</string>
+
+    <!-- Setup validation -->
+    <string name="setup_error_master_password_required">Укажите мастер-пароль</string>
+    <string name="setup_error_confirm_master_password_required">Подтвердите мастер-пароль</string>
+    <string name="setup_error_password_mismatch">Подтверждение мастер-пароля не совпадает</string>
+    <string name="setup_error_family_name_required">Укажите название семьи</string>
+    <string name="setup_error_member_required">Добавьте хотя бы одного участника</string>
+    <string name="setup_error_member_name_required">У каждого участника должно быть имя</string>
+
+    <!-- Notification labels -->
+    <string name="notification_location">Геопозиция</string>
+    <string name="notification_quick_action">Быстрый ответ</string>
+    <string name="notification_multiple_senders">%1$s (+%2$d)</string>
+
+    <!-- Content descriptions -->
+    <string name="content_desc_settings">Настройки</string>
+    <string name="content_desc_refresh">Обновить</string>
+    <string name="content_desc_back">Назад</string>
+    <string name="content_desc_attach">Прикрепить</string>
+    <string name="content_desc_send">Отправить</string>
+</resources>

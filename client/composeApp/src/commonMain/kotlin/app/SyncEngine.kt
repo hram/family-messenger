@@ -75,16 +75,17 @@ class SyncEngine(
         val incomingMessageIds = incomingMessages.mapNotNull { it.id }
 
         if (incomingMessages.isNotEmpty() && !settings.pushEnabled) {
+            val strings = notificationStrings(currentLanguageCode())
             val first = incomingMessages.first()
             val senderName = contacts.firstOrNull { it.user.id == first.senderUserId }?.user?.displayName
-                ?: "Family Messenger"
+                ?: strings.appName
             val body = when {
                 !first.body.isNullOrBlank() -> first.body!!
-                first.type == MessageType.LOCATION -> "Геопозиция"
-                first.type == MessageType.QUICK_ACTION -> "Быстрый ответ"
+                first.type == MessageType.LOCATION -> strings.location
+                first.type == MessageType.QUICK_ACTION -> strings.quickAction
                 else -> ""
             }
-            val title = if (incomingMessages.size > 1) "$senderName (+${incomingMessages.size - 1})" else senderName
+            val title = if (incomingMessages.size > 1) strings.multipleSenders(senderName, incomingMessages.size - 1) else senderName
             notificationService.notify(title, body)
         }
 
@@ -109,4 +110,30 @@ private enum class SyncCycleResult {
     SUCCESS,
     IDLE,
     FAILED,
+}
+
+private data class SyncNotificationStrings(
+    val appName: String,
+    val location: String,
+    val quickAction: String,
+    val multipleSenders: (String, Int) -> String,
+)
+
+private fun notificationStrings(languageCode: String): SyncNotificationStrings {
+    val isRussian = languageCode.startsWith("ru", ignoreCase = true)
+    return if (isRussian) {
+        SyncNotificationStrings(
+            appName = "Family Messenger",
+            location = "Геопозиция",
+            quickAction = "Быстрый ответ",
+            multipleSenders = { sender, count -> "$sender (+$count)" },
+        )
+    } else {
+        SyncNotificationStrings(
+            appName = "Family Messenger",
+            location = "Location",
+            quickAction = "Quick action",
+            multipleSenders = { sender, count -> "$sender (+$count)" },
+        )
+    }
 }

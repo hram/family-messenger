@@ -1,11 +1,15 @@
 package app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
 import com.familymessenger.contract.PlatformType
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.ic_launcher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.HttpTimeout
 import kotlinx.browser.window
+import org.jetbrains.compose.resources.painterResource
 import kotlin.random.Random
 import org.w3c.dom.get
 import org.w3c.dom.set
@@ -95,6 +99,12 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
         println(throwable.toString())
     }
 }
+
+actual fun currentLanguageCode(): String =
+    window.navigator.language ?: "en"
+
+@Composable
+actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

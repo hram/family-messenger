@@ -1,13 +1,17 @@
 package app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
 import com.familymessenger.contract.PlatformType
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.ic_launcher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import io.ktor.client.plugins.HttpTimeout
+import org.jetbrains.compose.resources.painterResource
 import platform.Foundation.NSBundle
+import platform.Foundation.NSLocale
 import platform.Foundation.NSLog
-import platform.Foundation.NSString
 import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDefaults
 
@@ -62,6 +66,12 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
     NSLog("ERROR [%@] %@", tag, message)
     throwable?.message?.let { NSLog("ERROR [%@] cause=%@", tag, it) }
 }
+
+actual fun currentLanguageCode(): String =
+    (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
+
+@Composable
+actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

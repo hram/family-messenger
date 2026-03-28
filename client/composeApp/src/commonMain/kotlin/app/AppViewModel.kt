@@ -11,6 +11,8 @@ import app.ui.AppUiState
 import app.ui.OnboardingFormState
 import app.ui.Screen
 import app.ui.SettingsState
+import app.ui.UiText
+import app.ui.uiText
 import app.usecase.CreateMemberUseCase
 import app.usecase.LoadContactsUseCase
 import app.usecase.LoadSetupStatusUseCase
@@ -26,6 +28,7 @@ import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.contract.QuickActionCode
 import com.familymessenger.contract.UserRole
+import com.familymessenger.composeapp.generated.resources.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -164,7 +167,7 @@ class AppViewModel(
                     )
                     if (!status.initialized && platformInfo.type != PlatformType.WEB) {
                         mutableState.value = mutableState.value.copy(
-                            statusMessage = "System is not initialized yet. Complete setup in the web client.",
+                            statusMessage = uiText(Res.string.status_system_not_initialized),
                         )
                     }
                 }
@@ -213,7 +216,7 @@ class AppViewModel(
                             selectedContactName = null,
                             draftMessage = "",
                             statusMessage = null,
-                            errorMessage = "Сессия истекла. Войдите заново.",
+                            errorMessage = uiText(Res.string.error_session_expired),
                         )
                     }
 
@@ -225,7 +228,7 @@ class AppViewModel(
                             screen = Screen.CONTACTS,
                             currentUser = restoredSession.auth.user,
                             contacts = contactsRepository.cachedContacts(),
-                            errorMessage = "Сервер недоступен. Используется локальная сессия.",
+                            errorMessage = uiText(Res.string.error_server_unavailable_local_session),
                         )
                     }
 
@@ -235,7 +238,8 @@ class AppViewModel(
                             screen = Screen.CONTACTS,
                             currentUser = restoredSession.auth.user,
                             contacts = contactsRepository.cachedContacts(),
-                            errorMessage = error.message ?: "Не удалось обновить сессию. Используется локальная сессия.",
+                            errorMessage = error.message?.let(UiText::Dynamic)
+                                ?: uiText(Res.string.error_refresh_session_failed_local_session),
                         )
                     }
                 }
@@ -270,7 +274,7 @@ class AppViewModel(
                 contacts = contacts,
                 unreadCounts = emptyMap(),
                 errorMessage = null,
-                statusMessage = "Сессия активна",
+                statusMessage = uiText(Res.string.status_session_active),
             )
         }
     }
@@ -296,7 +300,7 @@ class AppViewModel(
                 contacts = contacts,
                 unreadCounts = emptyMap(),
                 errorMessage = null,
-                statusMessage = "Сессия активна",
+                statusMessage = uiText(Res.string.status_session_active),
             )
         }
     }
@@ -363,7 +367,7 @@ class AppViewModel(
                     members = response.members,
                 ),
                 errorMessage = null,
-                statusMessage = "Administrator access granted",
+                statusMessage = uiText(Res.string.status_admin_access_granted),
             )
         }
     }
@@ -381,7 +385,7 @@ class AppViewModel(
                     members = admin.members + response.member,
                 ),
                 errorMessage = null,
-                statusMessage = "Family member invite created",
+                statusMessage = uiText(Res.string.status_invite_created),
             )
         }
     }
@@ -404,7 +408,7 @@ class AppViewModel(
                 selectedContactName = state.value.selectedContactName?.takeIf { selectedContactStillExists },
                 messages = if (selectedContactStillExists) state.value.messages else emptyList(),
                 errorMessage = null,
-                statusMessage = "Family member removed",
+                statusMessage = uiText(Res.string.status_member_removed),
             )
         }
     }
@@ -434,7 +438,7 @@ class AppViewModel(
             val ok = shareLocationUseCase(contactId)
             refreshCurrentConversation()
             mutableState.value = mutableState.value.copy(
-                statusMessage = if (ok) "Локация отправлена" else "Локация недоступна на этой платформе",
+                statusMessage = if (ok) uiText(Res.string.status_location_sent) else uiText(Res.string.status_location_unavailable),
             )
         }
     }
@@ -464,7 +468,7 @@ class AppViewModel(
     fun saveBaseUrl() {
         runBusy {
             settingsRepository.updateServerBaseUrl(state.value.onboarding.baseUrl)
-            mutableState.value = mutableState.value.copy(statusMessage = "Base URL сохранён")
+            mutableState.value = mutableState.value.copy(statusMessage = uiText(Res.string.status_base_url_saved))
         }
     }
 
@@ -483,7 +487,7 @@ class AppViewModel(
                 selectedContactName = null,
                 draftMessage = "",
                 admin = AdminState(),
-                statusMessage = "Сессия очищена",
+                statusMessage = uiText(Res.string.status_session_cleared),
             )
         }
     }
@@ -514,7 +518,9 @@ class AppViewModel(
             mutableState.value = mutableState.value.copy(isBusy = true, errorMessage = null)
             runCatching { block() }
                 .onFailure { error ->
-                    mutableState.value = mutableState.value.copy(errorMessage = error.message ?: "Операция завершилась с ошибкой")
+                    mutableState.value = mutableState.value.copy(
+                        errorMessage = error.message?.let(UiText::Dynamic) ?: uiText(Res.string.error_operation_failed),
+                    )
                 }
             mutableState.value = mutableState.value.copy(isBusy = false)
         }

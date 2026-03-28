@@ -26,9 +26,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.UserRole
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TgTopBar(
@@ -132,9 +134,17 @@ internal fun TgTextField(
 internal fun ContactSummary.isFamilyGroup(): Boolean =
     user.id == FAMILY_GROUP_CHAT_ID || user.role == UserRole.FAMILY
 
+@Composable
+internal fun UserRole.localizedLabel(): String = when (this) {
+    UserRole.PARENT -> stringResource(Res.string.role_parent)
+    UserRole.CHILD -> stringResource(Res.string.role_child)
+    UserRole.FAMILY -> stringResource(Res.string.role_family)
+}
+
+@Composable
 internal fun ContactSummary.subtitleText(): String =
     when {
-        isFamilyGroup() -> "group chat"
-        isOnline -> "online"
-        else -> "offline · ${user.role.name.lowercase()}"
+        isFamilyGroup() -> stringResource(Res.string.contact_group_chat)
+        isOnline -> stringResource(Res.string.contact_online)
+        else -> stringResource(Res.string.contact_offline_role, user.role.localizedLabel().lowercase())
     }

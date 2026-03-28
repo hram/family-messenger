@@ -32,15 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.familymessenger.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SettingsScreen(state: AppUiState, viewModel: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         TgTopBar(
-            title = "Settings",
+            title = stringResource(Res.string.screen_settings),
             leadingContent = {
                 IconButton(onClick = viewModel::backToContacts) {
-                    Icon(AppIcons.Back, contentDescription = "Back", tint = Color.White)
+                    Icon(AppIcons.Back, contentDescription = stringResource(Res.string.content_desc_back), tint = Color.White)
                 }
             },
         )
@@ -62,7 +64,7 @@ internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
             TgTextField(
                 value = state.onboarding.baseUrl,
                 onValueChange = viewModel::updateBaseUrl,
-                label = "Server Base URL",
+                label = stringResource(Res.string.settings_server_base_url),
                 modifier = Modifier.testTag(AppTestTags.SettingsBaseUrl),
             )
             Spacer(Modifier.height(8.dp))
@@ -75,37 +77,40 @@ internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
                 colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
                 shape = RoundedCornerShape(10.dp),
             ) {
-                Text("Save", fontWeight = FontWeight.Medium)
+                Text(stringResource(Res.string.action_save), fontWeight = FontWeight.Medium)
             }
         }
 
         SettingsSection {
             TgToggleRow(
-                title = "Polling sync",
+                title = stringResource(Res.string.settings_polling_sync),
                 value = state.settings.pollingEnabled,
                 onToggle = viewModel::updatePollingEnabled,
             )
             HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
             TgToggleRow(
-                title = "Push notifications",
+                title = stringResource(Res.string.settings_push_notifications),
                 value = state.settings.pushEnabled,
                 onToggle = viewModel::updatePushEnabled,
             )
         }
 
         SettingsSection {
-            TgInfoRow("User",     state.currentUser?.displayName ?: "—")
+            val currentRole = state.currentUser?.role?.localizedLabel() ?: stringResource(Res.string.label_unknown)
+            val roleValue = if (state.currentUser?.isAdmin == true) {
+                currentRole + stringResource(Res.string.settings_role_admin_suffix)
+            } else {
+                currentRole
+            }
+            TgInfoRow(stringResource(Res.string.settings_user), state.currentUser?.displayName ?: stringResource(Res.string.label_unknown))
             HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
-            TgInfoRow("Role",     buildString {
-                append(state.currentUser?.role?.name?.lowercase() ?: "—")
-                if (state.currentUser?.isAdmin == true) append(" · admin")
-            })
+            TgInfoRow(stringResource(Res.string.settings_role), roleValue)
             HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
-            TgInfoRow("Platform", state.platformName)
+            TgInfoRow(stringResource(Res.string.settings_platform), state.platformName)
             HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
-            TgInfoRow("Pending",  state.pendingMessageCount.toString())
+            TgInfoRow(stringResource(Res.string.settings_pending), state.pendingMessageCount.toString())
             HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
-            TgInfoRow("Cursor",   state.syncCursor.toString())
+            TgInfoRow(stringResource(Res.string.settings_cursor), state.syncCursor.toString())
         }
 
         if (state.currentUser?.isAdmin == true) {
@@ -118,7 +123,7 @@ internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = TgBlueDark),
                     shape = RoundedCornerShape(10.dp),
                 ) {
-                    Text("Open Administration", fontWeight = FontWeight.Medium)
+                    Text(stringResource(Res.string.settings_open_admin), fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -135,7 +140,7 @@ internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
             colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text("Log out", fontWeight = FontWeight.Medium)
+            Text(stringResource(Res.string.settings_logout), fontWeight = FontWeight.Medium)
         }
     }
 }
