@@ -1,6 +1,7 @@
 package app.ui
 
 import app.AppViewModel
+import app.copyTextToClipboard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -146,6 +147,11 @@ internal fun AdminPanel(state: AppUiState, viewModel: AppViewModel) {
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
+                                    InviteActionButton(
+                                        icon = AppIcons.Copy,
+                                        label = stringResource(Res.string.action_copy),
+                                        onClick = { copyTextToClipboard(member.inviteCode) },
+                                    )
                                     InviteActionButton(
                                         icon = AppIcons.QrCode,
                                         label = stringResource(Res.string.action_qr_code),

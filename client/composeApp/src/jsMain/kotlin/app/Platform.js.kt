@@ -8,9 +8,12 @@ import com.familymessenger.composeapp.generated.resources.ic_launcher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.HttpTimeout
+import kotlinx.browser.document
+import kotlinx.browser.window
 import kotlinx.browser.window
 import org.jetbrains.compose.resources.painterResource
 import kotlin.random.Random
+import org.w3c.dom.HTMLTextAreaElement
 import org.w3c.dom.get
 import org.w3c.dom.set
 
@@ -102,6 +105,33 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
 
 actual fun currentLanguageCode(): String =
     window.navigator.language ?: "en"
+
+actual fun copyTextToClipboard(text: String) {
+    val navigatorClipboard = window.navigator.asDynamic().clipboard
+    if (navigatorClipboard != null) {
+        runCatching {
+            navigatorClipboard.writeText(text)
+            return
+        }.onFailure {
+            platformLogError("Clipboard", "navigator.clipboard.writeText failed", it)
+        }
+    }
+
+    val textarea = document.createElement("textarea") as HTMLTextAreaElement
+    textarea.value = text
+    textarea.setAttribute("readonly", "true")
+    textarea.style.position = "fixed"
+    textarea.style.left = "-9999px"
+    textarea.style.top = "0"
+    document.body?.appendChild(textarea)
+    textarea.select()
+    runCatching {
+        document.execCommand("copy")
+    }.onFailure {
+        platformLogError("Clipboard", "document.execCommand(copy) failed", it)
+    }
+    document.body?.removeChild(textarea)
+}
 
 @Composable
 actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)

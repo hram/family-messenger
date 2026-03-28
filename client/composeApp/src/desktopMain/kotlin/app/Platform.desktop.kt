@@ -11,6 +11,7 @@ import io.ktor.client.plugins.HttpTimeout
 import java.awt.SystemTray
 import java.awt.Toolkit
 import java.awt.TrayIcon
+import java.awt.datatransfer.StringSelection
 import java.awt.image.BufferedImage
 import java.util.Locale
 import java.util.UUID
@@ -101,6 +102,10 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
 }
 
 actual fun currentLanguageCode(): String = Locale.getDefault().toLanguageTag()
+
+actual fun copyTextToClipboard(text: String) {
+    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+}
 
 @Composable
 actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)

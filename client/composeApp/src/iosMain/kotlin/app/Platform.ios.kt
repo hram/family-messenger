@@ -14,6 +14,7 @@ import platform.Foundation.NSLocale
 import platform.Foundation.NSLog
 import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDefaults
+import platform.UIKit.UIPasteboard
 
 private class IosStore(private val defaults: NSUserDefaults) : KeyValueStore {
     override fun getString(key: String): String? = defaults.stringForKey(key)
@@ -69,6 +70,10 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
 
 actual fun currentLanguageCode(): String =
     (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
+
+actual fun copyTextToClipboard(text: String) {
+    UIPasteboard.generalPasteboard.string = text
+}
 
 @Composable
 actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)

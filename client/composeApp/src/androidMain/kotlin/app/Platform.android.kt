@@ -3,6 +3,8 @@ package app
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -123,6 +125,11 @@ actual fun platformLogError(tag: String, message: String, throwable: Throwable?)
 
 actual fun currentLanguageCode(): String =
     AndroidRuntime.context.resources.configuration.locales[0]?.toLanguageTag() ?: "en"
+
+actual fun copyTextToClipboard(text: String) {
+    val clipboard = AndroidRuntime.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Family Messenger invite", text))
+}
 
 @Composable
 actual fun appLogoPainter(): Painter = painterResource(R.mipmap.ic_launcher)

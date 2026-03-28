@@ -48,6 +48,8 @@ expect fun platformLogError(tag: String, message: String, throwable: Throwable? 
 
 expect fun currentLanguageCode(): String
 
+expect fun copyTextToClipboard(text: String)
+
 @Composable
 expect fun appLogoPainter(): Painter
 

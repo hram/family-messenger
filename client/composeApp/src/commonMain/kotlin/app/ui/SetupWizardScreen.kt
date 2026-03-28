@@ -2,6 +2,7 @@ package app.ui
 
 import app.SetupUiState
 import app.SetupViewModel
+import app.copyTextToClipboard
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -593,7 +594,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                     icon = AppIcons.Copy,
                     label = stringResource(Res.string.action_copy),
                     modifier = Modifier.weight(1f),
-                    onClick = { /* TODO: clipboard copy invite.inviteCode */ },
+                    onClick = { copyTextToClipboard(invite.inviteCode) },
                 )
                 InviteActionButton(
                     icon = AppIcons.QrCode,

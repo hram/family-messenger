@@ -31,6 +31,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.familymessenger.composeapp.generated.resources.*
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 // ── Theme wrapper ─────────────────────────────────────────────────────────────
@@ -125,6 +127,14 @@ fun FamilyMessengerApp(viewModel: AppViewModel, setupViewModel: SetupViewModel? 
 private fun TgBanner(errorMessage: UiText?, statusMessage: UiText?, onDismiss: (() -> Unit)?) {
     val banner = errorMessage ?: statusMessage ?: return
     val isError = errorMessage != null
+
+    LaunchedEffect(errorMessage, statusMessage) {
+        if (!isError && statusMessage != null && onDismiss != null) {
+            delay(3500)
+            onDismiss()
+        }
+    }
+
     Surface(
         modifier = Modifier
             .padding(horizontal = 12.dp, vertical = 8.dp)
