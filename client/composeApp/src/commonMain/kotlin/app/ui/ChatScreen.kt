@@ -27,12 +27,24 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.familymessenger.composeapp.generated.resources.*
@@ -61,8 +73,17 @@ internal fun ChatScreen(state: AppUiState, viewModel: AppViewModel) {
 @Composable
 internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
     val listState = rememberLazyListState()
+    var draftField by rememberSaveable(state.selectedContactId, state.draftMessage, state.screen, stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(state.draftMessage, TextRange(state.draftMessage.length)))
+    }
+
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.size - 1)
+    }
+    LaunchedEffect(state.draftMessage, state.selectedContactId, state.screen) {
+        if (draftField.text != state.draftMessage) {
+            draftField = TextFieldValue(state.draftMessage, TextRange(state.draftMessage.length))
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -121,10 +142,29 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                     Icon(AppIcons.Attach, contentDescription = stringResource(Res.string.content_desc_attach), tint = TextSecondary)
                 }
                 OutlinedTextField(
-                    value = state.draftMessage,
-                    onValueChange = viewModel::updateDraftMessage,
+                    value = draftField,
+                    onValueChange = { value: TextFieldValue ->
+                        draftField = value
+                        viewModel.updateDraftMessage(value.text)
+                    },
                     modifier = Modifier
                         .weight(1f)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown || event.key != Key.Enter) return@onPreviewKeyEvent false
+                            if (event.isCtrlPressed) {
+                                val updatedText = buildString {
+                                    append(draftField.text.substring(0, draftField.selection.start))
+                                    append('\n')
+                                    append(draftField.text.substring(draftField.selection.end))
+                                }
+                                val newCursor = draftField.selection.start + 1
+                                draftField = TextFieldValue(updatedText, TextRange(newCursor))
+                                viewModel.updateDraftMessage(updatedText)
+                                return@onPreviewKeyEvent true
+                            }
+                            viewModel.sendCurrentDraft()
+                            true
+                        }
                         .testTag(AppTestTags.ChatInput),
                     placeholder = { Text(stringResource(Res.string.chat_input_placeholder), color = TextSecondary, fontSize = 14.sp) },
                     shape = RoundedCornerShape(22.dp),
