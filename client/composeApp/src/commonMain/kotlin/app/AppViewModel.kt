@@ -132,10 +132,10 @@ class AppViewModel(
                     currentUser = session?.auth?.user,
                     admin = if (session?.auth?.user?.isAdmin == true) mutableState.value.admin else AdminState(),
                     screen = when {
-                        session == null && platformInfo.type == PlatformType.WEB && mutableState.value.isSystemInitialized == false -> Screen.SETUP
-                        session == null -> Screen.ONBOARDING
+                        mutableState.value.screen == Screen.SPLASH -> Screen.SPLASH
+                        session != null && mutableState.value.screen in setOf(Screen.ONBOARDING, Screen.SETUP) -> Screen.CONTACTS
                         session?.auth?.user?.isAdmin == false && mutableState.value.screen == Screen.ADMIN -> Screen.CONTACTS
-                        else -> mutableState.value.screen.takeIf { it != Screen.ONBOARDING && it != Screen.SETUP } ?: Screen.CONTACTS
+                        else -> mutableState.value.screen
                     },
                     onboarding = mutableState.value.onboarding.copy(
                         baseUrl = settings.serverBaseUrl,
@@ -156,45 +156,88 @@ class AppViewModel(
                 ),
                 settings = SettingsState(settings.pollingEnabled, settings.pushEnabled),
             )
-            runCatching { loadSetupStatus() }
-                .onSuccess { setupStatus ->
+            val restoredSession = sessionRepository.restore()
+            val setupStatus = runCatching { loadSetupStatus() }
+                .onSuccess { status ->
                     mutableState.value = mutableState.value.copy(
-                        isSystemInitialized = setupStatus.initialized,
-                        screen = when {
-                            sessionRepository.restore() == null && platformInfo.type == PlatformType.WEB && !setupStatus.initialized -> Screen.SETUP
-                            else -> mutableState.value.screen
-                        },
+                        isSystemInitialized = status.initialized,
                     )
-                    if (!setupStatus.initialized && platformInfo.type != PlatformType.WEB) {
+                    if (!status.initialized && platformInfo.type != PlatformType.WEB) {
                         mutableState.value = mutableState.value.copy(
                             statusMessage = "System is not initialized yet. Complete setup in the web client.",
                         )
                     }
                 }
-            if (sessionRepository.restore() != null) {
-                runCatching {
-                    val session = sessionRepository.refreshSessionFromServer()
-                    syncEngine.start(scope)
-                    mutableState.value = mutableState.value.copy(
-                        screen = Screen.CONTACTS,
-                        currentUser = session.auth.user,
-                        contacts = contactsRepository.cachedContacts(),
-                        unreadCounts = emptyMap(),
-                        errorMessage = null,
-                    )
-                }.onFailure {
-                    sessionRepository.logout()
-                    syncEngine.stop()
-                    mutableState.value = mutableState.value.copy(
-                        screen = fallbackLoggedOutScreen(),
-                        currentUser = null,
-                        contacts = emptyList(),
-                        unreadCounts = emptyMap(),
-                        messages = emptyList(),
-                        selectedContactId = null,
-                        selectedContactName = null,
-                        draftMessage = "",
-                    )
+                .getOrNull()
+
+            if (restoredSession == null) {
+                mutableState.value = mutableState.value.copy(
+                    screen = when {
+                        platformInfo.type == PlatformType.WEB && setupStatus?.initialized == false -> Screen.SETUP
+                        else -> Screen.ONBOARDING
+                    },
+                )
+                return@launch
+            }
+
+            mutableState.value = mutableState.value.copy(
+                screen = Screen.CONTACTS,
+                currentUser = restoredSession.auth.user,
+                contacts = contactsRepository.cachedContacts(),
+                unreadCounts = emptyMap(),
+                errorMessage = null,
+            )
+            runCatching {
+                val session = sessionRepository.refreshSessionFromServer()
+                val contacts = loadContacts()
+                syncEngine.start(scope)
+                mutableState.value = mutableState.value.copy(
+                    screen = Screen.CONTACTS,
+                    currentUser = session.auth.user,
+                    contacts = contacts,
+                    unreadCounts = emptyMap(),
+                    errorMessage = null,
+                )
+            }.onFailure { error ->
+                when (error) {
+                    is AppException.Unauthorized -> {
+                        sessionRepository.logout()
+                        syncEngine.stop()
+                        mutableState.value = mutableState.value.copy(
+                            screen = fallbackLoggedOutScreen(),
+                            currentUser = null,
+                            contacts = emptyList(),
+                            unreadCounts = emptyMap(),
+                            messages = emptyList(),
+                            selectedContactId = null,
+                            selectedContactName = null,
+                            draftMessage = "",
+                            statusMessage = null,
+                            errorMessage = "Сессия истекла. Войдите заново.",
+                        )
+                    }
+
+                    is AppException.Network,
+                    is AppException.Server,
+                    -> {
+                        syncEngine.stop()
+                        mutableState.value = mutableState.value.copy(
+                            screen = Screen.CONTACTS,
+                            currentUser = restoredSession.auth.user,
+                            contacts = contactsRepository.cachedContacts(),
+                            errorMessage = "Сервер недоступен. Используется локальная сессия.",
+                        )
+                    }
+
+                    else -> {
+                        syncEngine.stop()
+                        mutableState.value = mutableState.value.copy(
+                            screen = Screen.CONTACTS,
+                            currentUser = restoredSession.auth.user,
+                            contacts = contactsRepository.cachedContacts(),
+                            errorMessage = error.message ?: "Не удалось обновить сессию. Используется локальная сессия.",
+                        )
+                    }
                 }
             }
         }
@@ -219,11 +262,12 @@ class AppViewModel(
             val onboarding = state.value.onboarding
             settingsRepository.updateServerBaseUrl(onboarding.baseUrl)
             val session = login(onboarding.inviteCode)
+            val contacts = loadContacts()
             syncEngine.start(scope)
             mutableState.value = mutableState.value.copy(
                 screen = Screen.CONTACTS,
                 currentUser = session.auth.user,
-                contacts = contactsRepository.cachedContacts(),
+                contacts = contacts,
                 unreadCounts = emptyMap(),
                 errorMessage = null,
                 statusMessage = "Сессия активна",
@@ -244,11 +288,12 @@ class AppViewModel(
         runBusy {
             settingsRepository.updateServerBaseUrl(baseUrl)
             val session = login(inviteCode)
+            val contacts = loadContacts()
             syncEngine.start(scope)
             mutableState.value = mutableState.value.copy(
                 screen = Screen.CONTACTS,
                 currentUser = session.auth.user,
-                contacts = contactsRepository.cachedContacts(),
+                contacts = contacts,
                 unreadCounts = emptyMap(),
                 errorMessage = null,
                 statusMessage = "Сессия активна",

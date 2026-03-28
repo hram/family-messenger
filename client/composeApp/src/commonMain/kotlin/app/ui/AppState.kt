@@ -9,6 +9,7 @@ import com.familymessenger.contract.UserRole
 import com.familymessenger.contract.UserProfile
 
 enum class Screen {
+    SPLASH,
     ONBOARDING,
     SETUP,
     CONTACTS,
@@ -44,7 +45,7 @@ data class AdminState(
 )
 
 data class AppUiState(
-    val screen: Screen = Screen.ONBOARDING,
+    val screen: Screen = Screen.SPLASH,
     val platform: PlatformType = PlatformType.ANDROID,
     val platformName: String = "",
     val isBusy: Boolean = false,

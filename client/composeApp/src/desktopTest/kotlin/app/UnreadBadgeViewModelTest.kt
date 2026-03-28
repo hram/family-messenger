@@ -44,6 +44,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -52,6 +53,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancel
 import kotlinx.datetime.Clock
@@ -679,6 +681,265 @@ class UnreadBadgeViewModelTest {
         } finally {
             syncEngine.stop()
             scope.cancel()
+        }
+    }
+
+    @Test
+    fun startupRefreshKeepsLocalSessionWhenServerIsUnavailable() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 3, name = "Поля", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val childContact = ContactSummary(user = child, isOnline = true)
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/setup/status" -> respondJson(ApiResponse(success = true, data = SetupStatusResponse(initialized = true)))
+                "/api/profile/me" -> respondError(HttpStatusCode.InternalServerError)
+                else -> error("Unexpected path in test: ${request.url.encodedPath}")
+            }
+        }
+        val apiClient = FamilyMessengerApiClient(
+            httpClient = configuredHttpClient(HttpClient(engine)),
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            executor = ApiExecutor(sessionStore),
+        )
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
+        val setupRepository = SetupRepository(apiClient)
+        val adminRepository = AdminRepository(apiClient)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        sessionStore.save(
+            StoredSession(
+                auth = AuthPayload(
+                    user = parent,
+                    family = family,
+                    session = DeviceSession(token = "test-token"),
+                ),
+            ),
+        )
+        localDatabase.update { snapshot ->
+            snapshot.copy(contacts = listOf(childContact).map { StoredContact(it, Clock.System.now()) })
+        }
+        val viewModel = AppViewModel(
+            platformInfo = platformInfo(),
+            localDatabase = localDatabase,
+            settingsRepository = settingsRepository,
+            sessionStore = sessionStore,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            sessionRepository = sessionRepository,
+            syncEngine = syncEngine,
+            login = LoginUseCase(sessionRepository),
+            loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
+            verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
+            createMember = CreateMemberUseCase(adminRepository),
+            removeMember = RemoveMemberUseCase(adminRepository),
+            loadContacts = LoadContactsUseCase(contactsRepository),
+            sendTextMessageUseCase = SendTextMessageUseCase(messagesRepository),
+            sendQuickActionUseCase = SendQuickActionUseCase(messagesRepository),
+            shareLocationUseCase = ShareLocationUseCase(PresenceRepository(apiClient, NoOpGeolocationService), messagesRepository),
+        )
+
+        try {
+
+            waitUntil("startup keeps user on authorized screen") {
+                viewModel.state.value.screen == Screen.CONTACTS &&
+                    viewModel.state.value.currentUser?.id == parent.id &&
+                    viewModel.state.value.errorMessage == "Сервер недоступен. Используется локальная сессия."
+            }
+
+            assertEquals(parent.id, sessionStore.currentSession()?.auth?.user?.id)
+            assertEquals(Screen.CONTACTS, viewModel.state.value.screen)
+            assertEquals(1, viewModel.state.value.contacts.size)
+        } finally {
+            viewModel.close()
+        }
+    }
+
+    @Test
+    fun startupRefreshLogsOutWhenSessionIsUnauthorized() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/setup/status" -> respondJson(ApiResponse(success = true, data = SetupStatusResponse(initialized = true)))
+                "/api/profile/me" -> respondJson(
+                    ApiResponse<Unit>(
+                        success = false,
+                        error = com.familymessenger.contract.ApiError(
+                            code = ErrorCode.UNAUTHORIZED,
+                            message = "token expired",
+                        ),
+                    ),
+                    status = HttpStatusCode.Unauthorized,
+                )
+                else -> error("Unexpected path in test: ${request.url.encodedPath}")
+            }
+        }
+        val apiClient = FamilyMessengerApiClient(
+            httpClient = configuredHttpClient(HttpClient(engine)),
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            executor = ApiExecutor(sessionStore),
+        )
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
+        val setupRepository = SetupRepository(apiClient)
+        val adminRepository = AdminRepository(apiClient)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        sessionStore.save(
+            StoredSession(
+                auth = AuthPayload(
+                    user = parent,
+                    family = family,
+                    session = DeviceSession(token = "test-token"),
+                ),
+            ),
+        )
+        val viewModel = AppViewModel(
+            platformInfo = platformInfo(),
+            localDatabase = localDatabase,
+            settingsRepository = settingsRepository,
+            sessionStore = sessionStore,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            sessionRepository = sessionRepository,
+            syncEngine = syncEngine,
+            login = LoginUseCase(sessionRepository),
+            loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
+            verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
+            createMember = CreateMemberUseCase(adminRepository),
+            removeMember = RemoveMemberUseCase(adminRepository),
+            loadContacts = LoadContactsUseCase(contactsRepository),
+            sendTextMessageUseCase = SendTextMessageUseCase(messagesRepository),
+            sendQuickActionUseCase = SendQuickActionUseCase(messagesRepository),
+            shareLocationUseCase = ShareLocationUseCase(PresenceRepository(apiClient, NoOpGeolocationService), messagesRepository),
+        )
+
+        try {
+
+            waitUntil("startup logs out unauthorized session") {
+                viewModel.state.value.screen == Screen.ONBOARDING &&
+                    sessionStore.currentSession() == null &&
+                    viewModel.state.value.errorMessage == "Сессия истекла. Войдите заново."
+            }
+
+            assertEquals(null, sessionStore.currentSession())
+        } finally {
+            viewModel.close()
+        }
+    }
+
+    @Test
+    fun loginLoadsContactsBeforeLongPollSyncCompletes() = runBlocking {
+        val parent = userProfile(id = 1, name = "Папа", role = UserRole.PARENT)
+        val child = userProfile(id = 3, name = "Поля", role = UserRole.CHILD)
+        val family = FamilySummary(id = 1, name = "Ивановы")
+        val childContact = ContactSummary(user = child, isOnline = true)
+        val syncGate = CompletableDeferred<Unit>()
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/setup/status" -> respondJson(ApiResponse(success = true, data = SetupStatusResponse(initialized = true)))
+                "/api/auth/login" -> respondJson(
+                    ApiResponse(
+                        success = true,
+                        data = AuthPayload(
+                            user = parent,
+                            family = family,
+                            session = DeviceSession(token = "test-token"),
+                        ),
+                    ),
+                )
+                "/api/contacts" -> respondJson(ApiResponse(success = true, data = ContactsResponse(contacts = listOf(childContact))))
+                "/api/messages/sync" -> {
+                    syncGate.await()
+                    respondJson(ApiResponse(success = true, data = SyncPayload(0, emptyList(), emptyList(), emptyList())))
+                }
+                "/api/messages/mark-delivered" -> respondJson(ApiResponse(success = true, data = AckResponse(accepted = true)))
+                else -> error("Unexpected path in test: ${request.url.encodedPath}")
+            }
+        }
+        val httpClient = configuredHttpClient(HttpClient(engine))
+        val localDatabase = LocalDatabase(InMemoryKeyValueStore(), json)
+        val sessionStore = SessionStore(InMemoryKeyValueStore(), json)
+        val settingsRepository = ClientSettingsRepository(localDatabase, platformInfo())
+        val apiClient = FamilyMessengerApiClient(
+            httpClient = httpClient,
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            executor = ApiExecutor(sessionStore),
+        )
+        val contactsRepository = ContactsRepository(apiClient, localDatabase)
+        val messagesRepository = MessagesRepository(apiClient, localDatabase, sessionStore)
+        val sessionRepository = SessionRepository(apiClient, sessionStore, localDatabase, platformInfo())
+        val setupRepository = SetupRepository(apiClient)
+        val adminRepository = AdminRepository(apiClient)
+        val syncEngine = SyncEngine(
+            sessionStore = sessionStore,
+            settingsRepository = settingsRepository,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            presenceRepository = PresenceRepository(apiClient, NoOpGeolocationService),
+            deviceRepository = DeviceRepository(apiClient),
+            notificationService = NoOpNotificationService,
+        )
+        val viewModel = AppViewModel(
+            platformInfo = platformInfo(),
+            localDatabase = localDatabase,
+            settingsRepository = settingsRepository,
+            sessionStore = sessionStore,
+            contactsRepository = contactsRepository,
+            messagesRepository = messagesRepository,
+            sessionRepository = sessionRepository,
+            syncEngine = syncEngine,
+            login = LoginUseCase(sessionRepository),
+            loadSetupStatus = LoadSetupStatusUseCase(setupRepository),
+            verifyAdminAccess = VerifyAdminAccessUseCase(adminRepository),
+            createMember = CreateMemberUseCase(adminRepository),
+            removeMember = RemoveMemberUseCase(adminRepository),
+            loadContacts = LoadContactsUseCase(contactsRepository),
+            sendTextMessageUseCase = SendTextMessageUseCase(messagesRepository),
+            sendQuickActionUseCase = SendQuickActionUseCase(messagesRepository),
+            shareLocationUseCase = ShareLocationUseCase(PresenceRepository(apiClient, NoOpGeolocationService), messagesRepository),
+        )
+
+        try {
+            viewModel.updateInviteCode("PARENT-DEMO")
+            viewModel.submitAuth()
+
+            waitUntil("contacts appear before sync returns") {
+                viewModel.state.value.screen == Screen.CONTACTS &&
+                    viewModel.state.value.contacts.map { it.user.id } == listOf(child.id)
+            }
+
+            assertEquals(listOf(child.id), localDatabase.snapshot().contacts.map { it.contact.user.id })
+        } finally {
+            syncGate.complete(Unit)
+            viewModel.close()
         }
     }
 

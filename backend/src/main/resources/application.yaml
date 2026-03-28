@@ -18,7 +18,7 @@ app:
     bootstrapSchema: true
     seedOnStart: false
   auth:
-    tokenTtlHours: 720
+    tokenTtlHours: 87600
   rateLimit:
     enabled: true
     authWindowSeconds: 60

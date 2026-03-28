@@ -56,13 +56,13 @@ import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import com.journeyapps.barcodescanner.DefaultDecoderFactory
+import app.ui.CardBg
+import app.ui.CardBorder
+import app.ui.SurfaceBg
+import app.ui.TextSecondary
+import app.ui.TgBlue
+import app.ui.TgBlueTint
 import kotlin.math.roundToInt
-
-private val QrBlue = Color(0xFF2AABEE)
-private val QrBlueTint = Color(0xFFE8F4FD)
-private val QrTextSec = Color(0xFF8A8A8A)
-private val QrSurfaceBg = Color(0xFFF5F5F5)
-private val QrScanLine = Color(0xCC2AABEE)
 
 actual fun isQrScannerSupported(): Boolean = true
 
@@ -119,7 +119,7 @@ actual fun QrScannerSheet(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            color = Color.White,
+            color = CardBg,
             tonalElevation = 0.dp,
         ) {
             Column(
@@ -135,7 +135,7 @@ actual fun QrScannerSheet(
                     Text(
                         "Наведите камеру на QR-код приглашения. Код и адрес сервера подставятся автоматически.",
                         fontSize = 13.sp,
-                        color = QrTextSec,
+                        color = TextSecondary,
                         lineHeight = 18.sp,
                     )
                 }
@@ -167,7 +167,7 @@ actual fun QrScannerSheet(
                         onClick = onDismiss,
                         shape = RoundedCornerShape(8.dp),
                     ) {
-                        Text("Отмена", color = QrTextSec, fontSize = 14.sp)
+                        Text("Отмена", color = TextSecondary, fontSize = 14.sp)
                     }
                 }
             }
@@ -230,7 +230,7 @@ private fun CameraPreview(
                     .fillMaxWidth()
                     .height(2.dp)
                     .offset { IntOffset(0, offsetY) }
-                    .background(QrScanLine),
+                    .background(TgBlue.copy(alpha = 0.8f)),
             )
         }
 
@@ -288,7 +288,7 @@ private fun QrCorner(
             .size(size)
             .border(
                 width = stroke,
-                color = QrBlue,
+                color = TgBlue,
                 shape = shape,
             ),
     )
@@ -301,7 +301,7 @@ private fun NoPermissionState(onRequestPermission: () -> Unit) {
             .fillMaxWidth()
             .aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),
-        color = QrSurfaceBg,
+        color = SurfaceBg,
     ) {
         Column(
             modifier = Modifier
@@ -314,12 +314,12 @@ private fun NoPermissionState(onRequestPermission: () -> Unit) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(QrBlueTint),
+                    .background(TgBlueTint),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     "QR",
-                    color = QrBlue,
+                    color = TgBlue,
                     fontSize = 18.sp,
                 )
             }
@@ -334,13 +334,13 @@ private fun NoPermissionState(onRequestPermission: () -> Unit) {
                 "Без разрешения сканирование QR недоступно",
                 modifier = Modifier.padding(top = 4.dp),
                 fontSize = 12.sp,
-                color = QrTextSec,
+                color = TextSecondary,
             )
             Button(
                 onClick = onRequestPermission,
                 modifier = Modifier.padding(top = 16.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = QrBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
             ) {
                 Text("Разрешить камеру")
             }

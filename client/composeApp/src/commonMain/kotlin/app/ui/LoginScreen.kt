@@ -51,24 +51,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val LoginBlue        = Color(0xFF2AABEE)
-private val LoginBlueDark    = Color(0xFF1A8DD1)
-private val LoginBlueTint    = Color(0xFFE8F4FD)
-private val LoginPageBg      = Color(0xFFE9EAEF)
-private val LoginCardBg      = Color(0xFFFFFFFF)
-private val LoginBorder      = Color(0xFFE8E8E8)
-private val LoginSurfaceBg   = Color(0xFFF5F5F5)
-private val LoginOnlineGreen = Color(0xFF4DB269)
-private val TextSecondary    = Color(0xFF8A8A8A)
-
 // ── Screen ────────────────────────────────────────────────────────────────────
 @Composable
 internal fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoginPageBg),
+            .background(AppBg),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
@@ -110,11 +99,11 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
     }
 
     Surface(
-        color = LoginCardBg,
+        color = CardBg,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(0.5.dp, LoginBorder, RoundedCornerShape(16.dp)),
+            .border(0.5.dp, CardBorder, RoundedCornerShape(16.dp)),
     ) {
         Column(
             modifier = Modifier.padding(28.dp),
@@ -129,7 +118,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(LoginBlue),
+                        .background(TgBlue),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -221,16 +210,16 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = LoginBorder, thickness = 0.5.dp)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = CardBorder, thickness = 0.5.dp)
                     Text("или войти через QR", fontSize = 12.sp, color = TextSecondary)
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = LoginBorder, thickness = 0.5.dp)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = CardBorder, thickness = 0.5.dp)
                 }
                 OutlinedButton(
                     onClick = { showQrScanner = true },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, LoginBlue),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = LoginBlue),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, TgBlue),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TgBlue),
                 ) {
                     Icon(
                         imageVector = AppIcons.QrCode,
@@ -254,8 +243,8 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                 enabled = canSubmit,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = LoginBlue,
-                    disabledContainerColor = LoginBorder,
+                    containerColor = TgBlue,
+                    disabledContainerColor = CardBorder,
                 ),
             ) {
                 Text("Войти", fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -263,7 +252,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
 
             // Platform status row
             Surface(
-                color = LoginSurfaceBg,
+                color = SurfaceBg,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -276,7 +265,7 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(LoginOnlineGreen),
+                            .background(OnlineGreen),
                     )
                     Text(
                         "Платформа: ${state.platformName}",
@@ -316,8 +305,8 @@ private fun parseInviteQrPayload(qr: String): InviteQrPayload? = runCatching {
 
 @Composable
 private fun loginFieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedBorderColor = LoginBorder,
-    focusedBorderColor = LoginBlue,
-    focusedLabelColor = LoginBlue,
+    unfocusedBorderColor = CardBorder,
+    focusedBorderColor = TgBlue,
+    focusedLabelColor = TgBlue,
 )
 

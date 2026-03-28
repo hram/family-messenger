@@ -15,7 +15,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,10 +22,6 @@ import androidx.compose.ui.unit.sp
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import androidx.compose.foundation.Image
 
-private val QrBlue       = Color(0xFF2AABEE)
-private val QrBlueDark   = Color(0xFF1A8DD1)
-private val QrBorder     = Color(0xFFE8E8E8)
-private val QrTextSec    = Color(0xFF8A8A8A)
 
 @Composable
 fun QrCodeDialog(
@@ -42,7 +37,7 @@ fun QrCodeDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Закрыть", color = QrBlue)
+                Text("Закрыть", color = TgBlue)
             }
         },
         title = {
@@ -61,7 +56,7 @@ fun QrCodeDialog(
                 Text(
                     displayName,
                     fontSize = 14.sp,
-                    color = QrTextSec,
+                    color = TextSecondary,
                 )
 
                 Image(
@@ -69,7 +64,7 @@ fun QrCodeDialog(
                     contentDescription = "QR-код для $displayName",
                     modifier = Modifier
                         .size(220.dp)
-                        .border(1.dp, QrBorder, RoundedCornerShape(8.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
                         .padding(12.dp),
                 )
 
@@ -78,13 +73,13 @@ fun QrCodeDialog(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace,
-                    color = QrBlueDark,
+                    color = TgBlueDark,
                     letterSpacing = 2.sp,
                 )
                 Text(
                     "Отсканируйте QR или введите код и адрес сервера вручную",
                     fontSize = 12.sp,
-                    color = QrTextSec,
+                    color = TextSecondary,
                 )
             }
         },

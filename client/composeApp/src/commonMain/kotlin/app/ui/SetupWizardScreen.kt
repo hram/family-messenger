@@ -56,21 +56,6 @@ import androidx.compose.ui.unit.sp
 import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
 
-// ── Palette (shared with App.kt) ─────────────────────────────────────────────
-private val SetupBlue      = Color(0xFF2AABEE)
-private val SetupBlueDark  = Color(0xFF1A8DD1)
-private val SetupBlueTint  = Color(0xFFE8F4FD)
-private val SetupBlueBorder= Color(0xFFB5D4F4)
-private val SetupPageBg    = Color(0xFFF0F2F5)
-private val WarnBg         = Color(0xFFFFF8E8)
-private val WarnBorder     = Color(0xFFF0C060)
-private val WarnText       = Color(0xFF633806)
-private val TextPrimary    = Color(0xFF000000)
-private val TextSecondary  = Color(0xFF8A8A8A)
-private val CardBorder     = Color(0xFFE8E8E8)
-private val SurfaceBg      = Color(0xFFF5F5F5)
-private val ErrorRed       = Color(0xFFE24B4A)
-
 // ── Root ──────────────────────────────────────────────────────────────────────
 @Composable
 internal fun SetupScreen(viewModel: SetupViewModel) {
@@ -78,7 +63,7 @@ internal fun SetupScreen(viewModel: SetupViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SetupPageBg),
+            .background(SetupBg),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
@@ -119,7 +104,7 @@ private fun StepProgressBar(currentStep: Int) {
                     .clip(CircleShape)
                     .background(
                         when {
-                            isDone || isActive -> SetupBlue
+                            isDone || isActive -> TgBlue
                             else               -> SurfaceBg
                         },
                     )
@@ -153,7 +138,7 @@ private fun StepProgressBar(currentStep: Int) {
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .background(if (step < currentStep) SetupBlue else CardBorder),
+                        .background(if (step < currentStep) TgBlue else CardBorder),
                 )
             }
         }
@@ -297,10 +282,10 @@ private fun StepMembers(state: SetupUiState, viewModel: SetupViewModel) {
                 Icon(
                     imageVector = AppIcons.Add,
                     contentDescription = null,
-                    tint = SetupBlue,
+                    tint = TgBlue,
                     modifier = Modifier.size(16.dp),
                 )
-                Text("Добавить участника", fontSize = 14.sp, color = SetupBlue)
+                Text("Добавить участника", fontSize = 14.sp, color = TgBlue)
             }
         }
 
@@ -358,7 +343,7 @@ private fun MemberCard(
                         onClick = onRemove,
                         modifier = Modifier.testTag(AppTestTags.SetupMemberRemovePrefix + index),
                     ) {
-                        Text("Удалить", color = SetupBlueDark, fontSize = 13.sp)
+                        Text("Удалить", color = TgBlueDark, fontSize = 13.sp)
                     }
                 }
             }
@@ -379,7 +364,7 @@ private fun MemberCard(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) SetupBlue else Color.White)
+                            .background(if (selected) TgBlue else CardBg)
                             .border(
                                 width = if (selected) 0.dp else 0.5.dp,
                                 color = if (selected) Color.Transparent else CardBorder,
@@ -403,7 +388,7 @@ private fun MemberCard(
             // Admin toggle — only for parents
             if (member.role == UserRole.PARENT) {
                 Surface(
-                    color = Color.White,
+                    color = CardBg,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -421,7 +406,7 @@ private fun MemberCard(
                             modifier = Modifier
                                 .size(18.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(if (member.isAdmin) SetupBlue else Color.White)
+                                .background(if (member.isAdmin) TgBlue else CardBg)
                                 .border(
                                     width = if (member.isAdmin) 0.dp else 1.5.dp,
                                     color = if (member.isAdmin) Color.Transparent else CardBorder,
@@ -450,14 +435,14 @@ private fun MemberCard(
 
                         // Badge
                         Surface(
-                            color = if (member.isAdmin) SetupBlue else SetupBlueTint,
+                            color = if (member.isAdmin) TgBlue else TgBlueTint,
                             shape = RoundedCornerShape(10.dp),
                         ) {
                             Text(
                                 text = if (member.isAdmin) "Да" else "Нет",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (member.isAdmin) Color.White else SetupBlueDark,
+                                color = if (member.isAdmin) Color.White else TgBlueDark,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
@@ -478,14 +463,14 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(SetupBlueTint)
+                    .background(TgBlueTint)
                     .align(Alignment.CenterHorizontally),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = AppIcons.Check,
                     contentDescription = null,
-                    tint = SetupBlue,
+                    tint = TgBlue,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -533,7 +518,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
         )
     }
     Surface(
-        color = Color.White,
+        color = CardBg,
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -544,7 +529,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SetupBlueTint)
+                    .background(TgBlueTint)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -559,11 +544,11 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                             invite.displayName,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF185FA5),
+                            color = LinkBlue,
                         )
                         if (invite.isAdmin) {
                             Surface(
-                                color = SetupBlue,
+                                color = TgBlue,
                                 shape = RoundedCornerShape(10.dp),
                             ) {
                                 Text(
@@ -579,7 +564,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                     Text(
                         invite.role.name.lowercase().replaceFirstChar { it.uppercaseChar() },
                         fontSize = 12.sp,
-                        color = Color(0xFF185FA5).copy(alpha = 0.8f),
+                        color = LinkBlue.copy(alpha = 0.8f),
                     )
                 }
 
@@ -588,14 +573,14 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                     invite.inviteCode,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Medium,
-                    color = SetupBlueDark,
+                    color = TgBlueDark,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 2.sp,
                 )
             }
 
             // Bottom: action buttons
-            HorizontalDivider(color = SetupBlueBorder, thickness = 0.5.dp)
+            HorizontalDivider(color = TgBlueBorder, thickness = 0.5.dp)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -655,7 +640,7 @@ internal fun InviteActionButton(
 @Composable
 private fun SetupCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
-        color = Color.White,
+        color = CardBg,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -717,8 +702,8 @@ internal fun PasswordField(
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = CardBorder,
-                focusedBorderColor = SetupBlue,
-                focusedLabelColor = SetupBlue,
+                focusedBorderColor = TgBlue,
+                focusedLabelColor = TgBlue,
                 errorBorderColor = ErrorRed,
             ),
         )
@@ -756,6 +741,7 @@ internal fun PasswordField(
 
 private data class StrengthResult(val fraction: Float, val label: String, val color: Color)
 
+@Composable
 private fun passwordStrength(pw: String): StrengthResult {
     var score = 0
     if (pw.length >= 8)  score++
@@ -764,9 +750,9 @@ private fun passwordStrength(pw: String): StrengthResult {
     if (pw.any { it.isDigit() })     score++
     if (pw.any { !it.isLetterOrDigit() }) score++
     return when {
-        score <= 1 -> StrengthResult(0.20f, "Слабый пароль",   Color(0xFFE24B4A))
-        score <= 3 -> StrengthResult(0.60f, "Средний пароль",  Color(0xFFEF9F27))
-        else       -> StrengthResult(1.00f, "Надёжный пароль", Color(0xFF639922))
+        score <= 1 -> StrengthResult(0.20f, "Слабый пароль",   StrengthWeak)
+        score <= 3 -> StrengthResult(0.60f, "Средний пароль",  StrengthMedium)
+        else       -> StrengthResult(1.00f, "Надёжный пароль", StrengthStrong)
     }
 }
 
@@ -788,8 +774,8 @@ private fun SetupTextField(
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = CardBorder,
-            focusedBorderColor = SetupBlue,
-            focusedLabelColor = SetupBlue,
+            focusedBorderColor = TgBlue,
+            focusedLabelColor = TgBlue,
         ),
     )
 }
@@ -810,7 +796,7 @@ private fun SetupPrimaryButton(
         enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = SetupBlue,
+            containerColor = TgBlue,
             disabledContainerColor = CardBorder,
         ),
     ) {
