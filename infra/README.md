@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 
 После завершения:
 
-- открой в браузере URL, который напечатал установщик, например `http://82.97.243.127:8080`
+- открой в браузере URL, который напечатал установщик, например `http://<IP>:8080`
 - пройди setup wizard
 - задай master password
 - добавь родителей и детей

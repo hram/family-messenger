@@ -60,7 +60,7 @@ curl http://<server-ip>:8080/api/setup/status
 Открой в браузере URL, который напечатал `install.sh`, например:
 
 ```text
-http://82.97.243.127:8080
+http://<IP>:8080
 ```
 
 На web-клиенте для чистой БД автоматически откроется setup wizard.

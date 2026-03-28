@@ -79,15 +79,13 @@ client/composeApp/build/outputs/apk/debug/composeApp-debug.apk
 
 ## Фактическое Состояние На Сервере
 
-Проверено по `ssh` на `root@82.97.243.127:22`.
-
 Production:
 
 - backend jar: `/opt/family-messenger/family-messenger-backend-all.jar`
 - web root: `/opt/family-messenger/web`
 - web entrypoint: `/opt/family-messenger/web/index.html`
 - Android APK: `/opt/family-messenger/web/downloads/family-messenger-android-debug.apk`
-- public APK URL: `http://82.97.243.127:8080/downloads/family-messenger-android-debug.apk`
+- public APK URL: `http://<IP>:8080/downloads/family-messenger-android-debug.apk`
 
 Development:
 
@@ -95,7 +93,7 @@ Development:
 - web root: `/opt/family-messenger-dev/web`
 - web entrypoint: `/opt/family-messenger-dev/web/index.html`
 - Android APK: `/opt/family-messenger-dev/web/downloads/family-messenger-android-debug.apk`
-- public APK URL: `http://82.97.243.127:9080/downloads/family-messenger-android-debug.apk`
+- public APK URL: `http://<IP>:9080/downloads/family-messenger-android-debug.apk`
 
 Caddy сейчас раздаёт:
 
@@ -118,7 +116,7 @@ HTTP cache headers на момент проверки:
 Подготовить переменные:
 
 ```bash
-export DEPLOY_HOST="82.97.243.127"
+export DEPLOY_HOST="<IP>"
 export DEPLOY_USER="root"
 export DEPLOY_PORT="22"
 export DEPLOY_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
@@ -308,7 +306,7 @@ _, stdout, _ = ssh.exec_command("curl -fsS http://127.0.0.1:9081/api/health")
 
 Уже известно:
 
-- `PROD SSH`: `root@82.97.243.127`
+- `PROD SSH`: `root@<IP>`
 - `DEV SSH`: тот же сервер, отдельный контур на нём же
 - `SSH port`: `22`
 - способ авторизации: пароль

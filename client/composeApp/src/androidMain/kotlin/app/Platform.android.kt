@@ -97,7 +97,7 @@ actual fun createPlatformServices(): PlatformServices {
         platformInfo = PlatformInfo(
             type = PlatformType.ANDROID,
             displayName = "Android",
-            defaultBaseUrl = "http://82.97.243.127:8080",
+            defaultBaseUrl = "",
         ),
         httpClient = HttpClient(OkHttp) {
             install(HttpTimeout) {

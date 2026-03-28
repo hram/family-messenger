@@ -6,11 +6,11 @@ Family Messenger is a Kotlin monorepo for a self-hosted family messaging MVP. Th
 
 - `backend/`: Ktor backend with auth, validation, persistence, sync, SQL artifacts, and docs
 - `client/composeApp/`: Compose Multiplatform client for Android, iOS, Desktop, and Web JS
-- `client/docs/`: client architecture notes
+- `client/`: client entrypoint, wrapper notes, and client-specific documentation
 - `shared-contract/`: shared Kotlin Multiplatform DTO and API contract module
 - `infra/`: Docker Compose deployment layer for local runs and Ubuntu 24.04 VPS
 - `docs/`: cross-cutting architecture documentation
-- `promts/`: original implementation prompts
+- `promts/`: original implementation prompts, staged project steps, and the HTML prototype used as an early UI reference
 
 ## Module Wiring
 
@@ -28,20 +28,32 @@ The backend now includes:
 
 The client is now implemented as a Kotlin Multiplatform Compose app with shared Ktor/Koin client logic, local persistence, auth/session handling, polling sync, and platform entrypoints for Android, iOS, Desktop, and Web JS.
 
-## Next Planned Layers
+## Current Focus
 
-1. Finish the multiplatform client implementation.
-2. Run a strict project self-review and tighten remaining MVP risks.
-3. Expand deployment with reverse proxy and HTTPS if needed.
+1. Tighten production risks around transport security and external deployment.
+2. Keep deploy/docs flow consistent between `README.md`, `infra/README.md`, and `docs/DEPLOY_RUNBOOK.md`.
+3. Continue polishing platform UX and operational safety for family use.
 
-See [backend README](backend/README.md), [backend API notes](backend/docs/api.md), [client architecture](client/docs/architecture.md), and [overall architecture](docs/ARCHITECTURE.md) for details.
+See [backend README](backend/README.md), [backend API notes](backend/docs/api.md), [client README](client/README.md), and [overall architecture](docs/ARCHITECTURE.md) for details.
 
 The practical next steps after the current implementation pass are tracked in [TODO.md](TODO.md).
 Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.md).
 Операционный контекст по ручному SSH-деплою хранится в [docs/DEPLOY_RUNBOOK.md](docs/DEPLOY_RUNBOOK.md).
+Инструкция по первому запуску через web wizard лежит в [docs/INSTALL_WIZARD.md](docs/INSTALL_WIZARD.md).
 
 Для самой простой пользовательской инструкции смотри [DEPLOY_FOR_FAMILY.md](DEPLOY_FOR_FAMILY.md).
 Для подробной пошаговой инструкции смотри [DEPLOY_STEP_BY_STEP_FOR_FAMILY.md](DEPLOY_STEP_BY_STEP_FOR_FAMILY.md).
+
+Если интересен сам процесс вайбкодинга, смотри:
+
+- [promts/prompt.md](promts/prompt.md)
+- [promts/step_1.md](promts/step_1.md)
+- [promts/step_2.md](promts/step_2.md)
+- [promts/step_3.md](promts/step_3.md)
+- [promts/step_4.md](promts/step_4.md)
+- [promts/step_5.md](promts/step_5.md)
+- [promts/family_messenger_prototype.html](promts/family_messenger_prototype.html)
+- [docs/habr_article.md](docs/habr_article.md)
 
 ## Deployment Rule
 
@@ -85,6 +97,7 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/un
 ```
 
 Подробности и ручной fallback описаны в [infra/README.md](infra/README.md).
+Первый запуск после установки описан отдельно в [docs/INSTALL_WIZARD.md](docs/INSTALL_WIZARD.md).
 
 ## Prod И Dev На Одном Сервере
 
