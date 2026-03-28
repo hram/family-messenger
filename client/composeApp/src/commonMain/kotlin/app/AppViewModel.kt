@@ -22,6 +22,7 @@ import app.usecase.SendQuickActionUseCase
 import app.usecase.SendTextMessageUseCase
 import app.usecase.ShareLocationUseCase
 import app.usecase.VerifyAdminAccessUseCase
+import app.usecase.VerifyMasterPasswordUseCase
 import com.familymessenger.contract.ContactSummary
 import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.MessageStatus
@@ -52,6 +53,7 @@ class AppViewModel(
     private val login: LoginUseCase,
     private val loadSetupStatus: LoadSetupStatusUseCase,
     private val verifyAdminAccess: VerifyAdminAccessUseCase,
+    private val verifyMasterPassword: VerifyMasterPasswordUseCase,
     private val createMember: CreateMemberUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val loadContacts: LoadContactsUseCase,
@@ -146,6 +148,7 @@ class AppViewModel(
                     settings = SettingsState(
                         pollingEnabled = settings.pollingEnabled,
                         pushEnabled = settings.pushEnabled,
+                        unlocked = session?.auth?.user?.isAdmin == true,
                     ),
                 )
             }
@@ -157,7 +160,11 @@ class AppViewModel(
                 onboarding = mutableState.value.onboarding.copy(
                     baseUrl = settings.serverBaseUrl,
                 ),
-                settings = SettingsState(settings.pollingEnabled, settings.pushEnabled),
+                settings = SettingsState(
+                    pollingEnabled = settings.pollingEnabled,
+                    pushEnabled = settings.pushEnabled,
+                    unlocked = mutableState.value.currentUser?.isAdmin == true,
+                ),
             )
             val restoredSession = sessionRepository.restore()
             val setupStatus = runCatching { loadSetupStatus() }
@@ -339,11 +346,51 @@ class AppViewModel(
         }
     }
 
-    fun backToContacts() = mutate { copy(screen = Screen.CONTACTS, selectedContactId = null, selectedContactName = null) }
+    fun backToContacts() = mutate {
+        copy(
+            screen = Screen.CONTACTS,
+            selectedContactId = null,
+            selectedContactName = null,
+            settings = settings.copy(
+                unlocked = currentUser?.isAdmin == true,
+                masterPassword = "",
+            ),
+        )
+    }
 
-    fun openSettings() = mutate { copy(screen = Screen.SETTINGS) }
+    fun openSettings() = mutate {
+        copy(
+            screen = Screen.SETTINGS,
+            settings = settings.copy(
+                unlocked = currentUser?.isAdmin == true,
+                masterPassword = "",
+            ),
+            errorMessage = null,
+            statusMessage = null,
+        )
+    }
 
     fun openAdmin() = mutate { copy(screen = Screen.ADMIN, errorMessage = null, statusMessage = null) }
+
+    fun updateSettingsMasterPassword(value: String) = mutate {
+        copy(settings = settings.copy(masterPassword = value))
+    }
+
+    fun unlockSettings() {
+        if (state.value.currentUser?.isAdmin == true) return
+        runBusy {
+            verifyMasterPassword(state.value.settings.masterPassword)
+            mutableState.value = mutableState.value.copy(
+                screen = Screen.SETTINGS,
+                settings = mutableState.value.settings.copy(
+                    unlocked = true,
+                    masterPassword = "",
+                ),
+                errorMessage = null,
+                statusMessage = uiText(Res.string.status_admin_access_granted),
+            )
+        }
+    }
 
     fun updateAdminMasterPassword(value: String) = mutate { copy(admin = admin.copy(masterPassword = value)) }
 
@@ -454,14 +501,18 @@ class AppViewModel(
     fun updatePollingEnabled(enabled: Boolean) {
         runBusy {
             settingsRepository.updatePollingEnabled(enabled)
-            mutableState.value = mutableState.value.copy(settings = mutableState.value.settings.copy(pollingEnabled = enabled))
+            mutableState.value = mutableState.value.copy(
+                settings = mutableState.value.settings.copy(pollingEnabled = enabled),
+            )
         }
     }
 
     fun updatePushEnabled(enabled: Boolean) {
         runBusy {
             settingsRepository.updatePushEnabled(enabled)
-            mutableState.value = mutableState.value.copy(settings = mutableState.value.settings.copy(pushEnabled = enabled))
+            mutableState.value = mutableState.value.copy(
+                settings = mutableState.value.settings.copy(pushEnabled = enabled),
+            )
         }
     }
 
@@ -487,6 +538,7 @@ class AppViewModel(
                 selectedContactName = null,
                 draftMessage = "",
                 admin = AdminState(),
+                settings = SettingsState(),
                 statusMessage = uiText(Res.string.status_session_cleared),
             )
         }

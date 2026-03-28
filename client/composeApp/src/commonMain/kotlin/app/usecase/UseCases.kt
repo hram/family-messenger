@@ -46,6 +46,13 @@ class VerifyAdminAccessUseCase(
         adminRepository.verifyAccess(masterPassword)
 }
 
+class VerifyMasterPasswordUseCase(
+    private val adminRepository: AdminRepository,
+) {
+    suspend operator fun invoke(masterPassword: String): Boolean =
+        adminRepository.verifyMasterPassword(masterPassword).accepted
+}
+
 class CreateMemberUseCase(
     private val adminRepository: AdminRepository,
 ) {

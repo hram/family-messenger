@@ -26,6 +26,8 @@ data class OnboardingFormState(
 data class SettingsState(
     val pollingEnabled: Boolean = true,
     val pushEnabled: Boolean = false,
+    val unlocked: Boolean = false,
+    val masterPassword: String = "",
 )
 
 data class SetupMemberInputState(

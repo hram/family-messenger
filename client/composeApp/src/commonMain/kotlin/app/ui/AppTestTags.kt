@@ -23,6 +23,8 @@ object AppTestTags {
     const val SettingsSaveBaseUrl = "settings.baseUrl.save"
     const val SettingsOpenAdmin = "settings.admin.open"
     const val SettingsLogout = "settings.logout"
+    const val SettingsLockPassword = "settings.lock.password"
+    const val SettingsUnlock = "settings.unlock"
 
     const val AdminPassword = "admin.password"
     const val AdminUnlock = "admin.unlock"

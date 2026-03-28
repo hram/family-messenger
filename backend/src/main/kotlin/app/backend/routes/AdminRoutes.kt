@@ -7,6 +7,7 @@ import com.familymessenger.contract.AdminCreateMemberRequest
 import com.familymessenger.contract.AdminCreateMemberResponse
 import com.familymessenger.contract.AdminMembersResponse
 import com.familymessenger.contract.AdminRemoveMemberRequest
+import com.familymessenger.contract.AckResponse
 import com.familymessenger.contract.ApiResponse
 import com.familymessenger.contract.VerifyAdminAccessRequest
 import io.github.smiley4.ktoropenapi.post
@@ -15,6 +16,21 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 
 fun Route.adminRoutes(adminService: AdminService) {
+    post("/admin/verify-master-password", {
+        description = "Verify the family master password without requiring administrator session."
+        request {
+            body<VerifyAdminAccessRequest>()
+        }
+        response {
+            HttpStatusCode.OK to {
+                body<ApiResponse<AckResponse>>()
+            }
+        }
+    }) {
+        val principal = requireNotNull(call.sessionPrincipal)
+        call.respondOk(adminService.verifyMasterPassword(principal, call.receive()))
+    }
+
     post("/admin/verify", {
         description = "Verify administrator access with master password and return current child management list."
         request {

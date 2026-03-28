@@ -91,6 +91,17 @@ class FamilyMessengerApiClient(
             }.body()
         }
 
+    /** Проверяет мастер-пароль для текущей семьи без входа в раздел администрирования. */
+    suspend fun verifyMasterPassword(masterPassword: String): AckResponse =
+        executor.execute {
+            platformLogInfo(LOG_TAG_API, "POST /api/admin/verify-master-password")
+            httpClient.post(url("/api/admin/verify-master-password")) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(VerifyAdminAccessRequest(masterPassword))
+            }.body()
+        }
+
     /** Создаёт нового участника семьи и генерирует для него инвайт-код. Требует мастер-пароль. */
     suspend fun createMember(
         masterPassword: String,

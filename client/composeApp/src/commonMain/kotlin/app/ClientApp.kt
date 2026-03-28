@@ -22,6 +22,7 @@ import app.usecase.SendQuickActionUseCase
 import app.usecase.SendTextMessageUseCase
 import app.usecase.ShareLocationUseCase
 import app.usecase.VerifyAdminAccessUseCase
+import app.usecase.VerifyMasterPasswordUseCase
 import com.familymessenger.contract.PlatformType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -109,6 +110,7 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
     single { LoginUseCase(get()) }
     single { LoadSetupStatusUseCase(get()) }
     single { VerifyAdminAccessUseCase(get()) }
+    single { VerifyMasterPasswordUseCase(get()) }
     single { CreateMemberUseCase(get()) }
     single { RemoveMemberUseCase(get()) }
     single { LoadContactsUseCase(get()) }
@@ -128,6 +130,7 @@ private fun commonClientModule(platformServices: PlatformServices): Module = mod
             login = get(),
             loadSetupStatus = get(),
             verifyAdminAccess = get(),
+            verifyMasterPassword = get(),
             createMember = get(),
             removeMember = get(),
             loadContacts = get(),

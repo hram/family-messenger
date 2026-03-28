@@ -52,6 +52,11 @@ internal fun SettingsScreen(state: AppUiState, viewModel: AppViewModel) {
 
 @Composable
 internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
+    if (!state.settings.unlocked) {
+        LockedSettingsPanel(state, viewModel)
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -141,6 +146,41 @@ internal fun SettingsPanel(state: AppUiState, viewModel: AppViewModel) {
             shape = RoundedCornerShape(12.dp),
         ) {
             Text(stringResource(Res.string.settings_logout), fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun LockedSettingsPanel(state: AppUiState, viewModel: AppViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppBg)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Surface(color = CardBg, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.admin_unlock_title), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(Res.string.admin_unlock_description), color = TextSecondary)
+                PasswordField(
+                    value = state.settings.masterPassword,
+                    onValueChange = viewModel::updateSettingsMasterPassword,
+                    label = stringResource(Res.string.admin_master_password_label),
+                    modifier = Modifier.testTag(AppTestTags.SettingsLockPassword),
+                )
+                Button(
+                    onClick = viewModel::unlockSettings,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag(AppTestTags.SettingsUnlock),
+                    colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text(stringResource(Res.string.admin_unlock_button))
+                }
+            }
         }
     }
 }
