@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -52,6 +53,10 @@ import com.familymessenger.contract.FAMILY_GROUP_CHAT_ID
 import com.familymessenger.contract.MessagePayload
 import com.familymessenger.contract.MessageStatus
 import com.familymessenger.contract.MessageType
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -138,7 +143,11 @@ internal fun ChatPanel(state: AppUiState, viewModel: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                IconButton(onClick = {}) {
+                IconButton(
+                    onClick = {},
+                    enabled = false,
+                    modifier = Modifier.alpha(0f),
+                ) {
                     Icon(AppIcons.Attach, contentDescription = stringResource(Res.string.content_desc_attach), tint = TextSecondary)
                 }
                 OutlinedTextField(
@@ -273,17 +282,27 @@ private fun MessageBubble(
 
                 // Time + delivery status
                 Row(
-                    modifier = Modifier.align(Alignment.End).padding(top = 3.dp),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 3.dp),
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(message.status.prettyLabel(), fontSize = 12.sp, color = TextSecondary)
+                    Text(
+                        message.createdAt.formatChatTime(),
+                        fontSize = 12.sp,
+                        lineHeight = 12.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(top = 1.dp),
+                    )
                     if (mine) {
                         Icon(
-                            imageVector = if (message.status == MessageStatus.READ) AppIcons.DoubleCheck else AppIcons.Check,
+                            painter = painterResource(message.status.iconResource()),
                             contentDescription = null,
-                            tint = if (message.status == MessageStatus.READ) TgBlue else TextSecondary,
-                            modifier = Modifier.size(14.dp),
+                            tint = Color.Unspecified,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .padding(top = 1.dp),
                         )
                     }
                 }
@@ -295,10 +314,17 @@ private fun MessageBubble(
 private fun senderNameColor(name: String): Color =
     AvatarPalette[name.hashCode().and(0x7FFFFFFF) % AvatarPalette.size]
 
-@Composable
-private fun MessageStatus.prettyLabel(): String = when (this) {
-    MessageStatus.LOCAL_PENDING -> stringResource(Res.string.msg_status_pending)
-    MessageStatus.SENT -> stringResource(Res.string.msg_status_sent)
-    MessageStatus.DELIVERED -> stringResource(Res.string.msg_status_delivered)
-    MessageStatus.READ -> stringResource(Res.string.msg_status_read)
+private fun kotlinx.datetime.Instant?.formatChatTime(): String {
+    val instant = this ?: return "--:--"
+    val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+    val hour = localDateTime.hour.toString().padStart(2, '0')
+    val minute = localDateTime.minute.toString().padStart(2, '0')
+    return "$hour:$minute"
+}
+
+private fun MessageStatus.iconResource(): DrawableResource = when (this) {
+    MessageStatus.LOCAL_PENDING -> Res.drawable.ic_status_pending
+    MessageStatus.SENT -> Res.drawable.ic_status_sent
+    MessageStatus.DELIVERED -> Res.drawable.ic_status_delivered
+    MessageStatus.READ -> Res.drawable.ic_status_read
 }

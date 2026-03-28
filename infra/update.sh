@@ -46,9 +46,13 @@ curl -fL "${WEB_URL}" -o /tmp/family-messenger-web.tar.gz
 ${SUDO} rm -rf "${INSTALL_ROOT}/web"
 ${SUDO} mkdir -p "${INSTALL_ROOT}/web"
 ${SUDO} tar -xzf /tmp/family-messenger-web.tar.gz -C "${INSTALL_ROOT}/web"
+${SUDO} find "${INSTALL_ROOT}/web" -type d -exec chmod 0755 {} \;
+${SUDO} find "${INSTALL_ROOT}/web" -type f -exec chmod 0644 {} \;
 if command -v gzip >/dev/null 2>&1; then
   ${SUDO} find "${INSTALL_ROOT}/web" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.wasm' -o -name '*.map' \) \
     -exec gzip -kf -9 {} \;
+  ${SUDO} find "${INSTALL_ROOT}/web" -type f \( -name '*.js.gz' -o -name '*.mjs.gz' -o -name '*.css.gz' -o -name '*.wasm.gz' -o -name '*.map.gz' \) \
+    -exec chmod 0644 {} \;
 fi
 ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
 rm -f /tmp/family-messenger-web.tar.gz
