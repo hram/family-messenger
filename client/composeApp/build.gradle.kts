@@ -122,6 +122,9 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "FamilyMessenger"
             packageVersion = "1.0.0"
+            macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
+            windows { iconFile.set(project.file("src/desktopMain/resources/icon.ico")) }
+            linux { iconFile.set(project.file("src/desktopMain/resources/icon.png")) }
         }
     }
 }

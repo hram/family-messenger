@@ -251,6 +251,53 @@ ssh "${DEPLOY_TARGET}" "
 "
 ```
 
+## Урок Из Реального Деплоя (2026-03-28)
+
+### Проблема: `sshpass` не установлен, ключ не добавлен
+
+`scp`/`ssh` с паролем через shell не работают — `sshpass` не установлен в системе, а ключ `~/.ssh/id_ed25519` не авторизован на сервере. Попытка `ssh -o BatchMode=yes` падает с `Permission denied (publickey,password)`.
+
+### Решение: деплой через Python paramiko
+
+`paramiko` уже установлен (`python3 -c "import paramiko"`). Использовать его для SCP и SSH-команд.
+
+Шаблон загрузки артефактов:
+
+```python
+import paramiko
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(DEPLOY_HOST, port=22, username=DEPLOY_USER, password=DEPLOY_PASSWORD, timeout=15)
+
+sftp = ssh.open_sftp()
+sftp.put("backend/build/libs/family-messenger-backend-all.jar", "/tmp/family-messenger-backend-all.jar")
+sftp.put("/tmp/family-messenger-web.tar.gz", "/tmp/family-messenger-web.tar.gz")
+sftp.close()
+```
+
+Шаблон выполнения команд на сервере:
+
+```python
+_, stdout, stderr = ssh.exec_command("set -euo pipefail\n...")
+print(stdout.read().decode())
+print(stderr.read().decode())
+ssh.close()
+```
+
+### Проблема: 502 сразу после `systemctl restart caddy`
+
+При финальном `curl` для проверки здоровья через Caddy (`:9080`) Caddy ещё не успел полностью подняться — curl возвращает 502. Это ложная тревога.
+
+**Правильная проверка:** сначала проверять backend **напрямую** на внутреннем порту контура, а потом через Caddy:
+
+```python
+_, stdout, _ = ssh.exec_command("curl -fsS http://127.0.0.1:9081/api/health")
+# для dev: 9081, для prod: 8081
+```
+
+Если `9081` отвечает — backend жив. Потом подождать секунду и проверить через Caddy (`9080`/`8080`).
+
 ## Что Нужно Заполнить Один Раз И Держать Актуальным
 
 Уже известно:

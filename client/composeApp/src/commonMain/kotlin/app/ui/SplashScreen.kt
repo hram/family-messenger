@@ -1,6 +1,10 @@
 package app.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.ic_launcher
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,21 +44,13 @@ internal fun SplashScreen(state: AppUiState) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Box(
+            Image(
+                painter = painterResource(Res.drawable.ic_launcher),
+                contentDescription = null,
                 modifier = Modifier
                     .size(92.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(TgBlue)
-                    .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(30.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    AppIcons.Chat,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(42.dp),
-                )
-            }
+                    .clip(RoundedCornerShape(30.dp)),
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),

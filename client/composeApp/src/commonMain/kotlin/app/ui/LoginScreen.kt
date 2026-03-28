@@ -3,7 +3,11 @@ package app.ui
 import app.AppViewModel
 import app.isQrScannerSupported
 import app.QrScannerSheet
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.ic_launcher
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -114,20 +118,13 @@ private fun LoginCard(state: AppUiState, viewModel: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(
+                Image(
+                    painter = painterResource(Res.drawable.ic_launcher),
+                    contentDescription = null,
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(CircleShape)
-                        .background(TgBlue),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Chat,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                        .clip(RoundedCornerShape(12.dp)),
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
                         "Family Messenger",

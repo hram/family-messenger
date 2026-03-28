@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="238" fill="#2AABEE"/>
+
+  <!-- Parent — large, center -->
+  <circle cx="512" cy="290" r="119" fill="white"/>
+  <path d="M273 786 C273 632 375 547 512 547 C649 547 751 632 751 786" fill="white"/>
+
+  <!-- Left child — medium, higher -->
+  <circle cx="238" cy="443" r="76" fill="white" opacity="0.75"/>
+  <path d="M103 786 C103 683 154 632 238 632 C322 632 374 683 374 786" fill="white" opacity="0.75"/>
+
+  <!-- Right child — smaller, lower -->
+  <circle cx="786" cy="512" r="60" fill="white" opacity="0.60"/>
+  <path d="M682 786 C682 699 718 648 786 648 C854 648 890 699 890 786" fill="white" opacity="0.60"/>
+</svg>
