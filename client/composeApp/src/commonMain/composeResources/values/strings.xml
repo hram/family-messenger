@@ -72,6 +72,8 @@
     <string name="screen_chat">Chat</string>
     <string name="chat_subtitle">offline-first · polling sync</string>
     <string name="chat_no_messages">No messages yet</string>
+    <string name="chat_date_today">today</string>
+    <string name="chat_date_yesterday">yesterday</string>
     <string name="chat_input_placeholder">Message</string>
     <string name="chat_location_default">My location</string>
     <string name="chat_select_contact">Select a contact</string>

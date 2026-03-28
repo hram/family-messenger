@@ -72,6 +72,8 @@
     <string name="screen_chat">Чат</string>
     <string name="chat_subtitle">офлайн-режим · синхронизация</string>
     <string name="chat_no_messages">Пока нет сообщений</string>
+    <string name="chat_date_today">сегодня</string>
+    <string name="chat_date_yesterday">вчера</string>
     <string name="chat_input_placeholder">Сообщение</string>
     <string name="chat_location_default">Моя геолокация</string>
     <string name="chat_select_contact">Выберите контакт</string>

@@ -195,6 +195,10 @@ ssh "${DEPLOY_TARGET}" "
   sudo rm -rf ${INSTALL_ROOT}/web
   sudo mkdir -p ${INSTALL_ROOT}/web
   sudo tar -xzf /tmp/family-messenger-web.tar.gz -C ${INSTALL_ROOT}/web
+  sudo find ${INSTALL_ROOT}/web -type d -exec chmod 0755 {} \;
+  sudo find ${INSTALL_ROOT}/web -type f -exec chmod 0644 {} \;
+  sudo find ${INSTALL_ROOT}/web -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.wasm' -o -name '*.map' \) -exec gzip -kf -9 {} \;
+  sudo find ${INSTALL_ROOT}/web -type f \( -name '*.js.gz' -o -name '*.mjs.gz' -o -name '*.css.gz' -o -name '*.wasm.gz' -o -name '*.map.gz' \) -exec chmod 0644 {} \;
   sudo chown -R ${APP_USER}:${APP_GROUP} ${INSTALL_ROOT}/web
   sudo systemctl restart ${SYSTEMD_UNIT}
   sudo systemctl restart caddy
@@ -220,6 +224,8 @@ ssh "${DEPLOY_TARGET}" "
 ```
 
 - checksum в `${INSTALL_ROOT}` должен совпасть с локальным checksum, иначе сервис может перезапуститься на старом jar
+- если Caddy настроен с `file_server { precompressed gzip }`, после ручной выкладки web bundle обязательно сгенерировать `*.gz` sidecar-файлы для `*.js`, `*.mjs`, `*.css`, `*.wasm`, `*.map`
+- иначе браузер во внешней сети может зависать на загрузке сырого `composeApp.js` / `skiko.wasm`, даже если локально на сервере файлы открываются мгновенно
 
 ## Проверка После Деплоя
 

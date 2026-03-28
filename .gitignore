@@ -10,3 +10,4 @@ local.properties
 !*.env.example
 /infra/.creds
 /client/composeApp/google-services.json
+/infra/seed-dev.py

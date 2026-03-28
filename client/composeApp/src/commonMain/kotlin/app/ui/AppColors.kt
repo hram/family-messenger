@@ -32,6 +32,7 @@ internal data class AppColorScheme(
     val bannerSuccessBg: Color,
     val bubbleMe: Color,
     val bubbleThem: Color,
+    val dateOverlayBg: Color,
     val strengthWeak: Color,
     val strengthMedium: Color,
     val strengthStrong: Color,
@@ -63,6 +64,7 @@ internal val LightColors = AppColorScheme(
     bannerSuccessBg = Color(0xFFD8F0D8),
     bubbleMe       = Color(0xFFDCEFD2),
     bubbleThem     = Color(0xFFFFFFFF),
+    dateOverlayBg  = Color(0x59000000),
     strengthWeak   = Color(0xFFE24B4A),
     strengthMedium = Color(0xFFEF9F27),
     strengthStrong = Color(0xFF639922),
@@ -94,6 +96,7 @@ internal val DarkColors = AppColorScheme(
     bannerSuccessBg = Color(0xFF0F2B1A),
     bubbleMe       = Color(0xFF1E3A28),
     bubbleThem     = Color(0xFF2C2C2E),
+    dateOverlayBg  = Color(0x59000000),
     strengthWeak   = Color(0xFFFF6B6B),
     strengthMedium = Color(0xFFEF9F27),
     strengthStrong = Color(0xFF639922),
@@ -128,9 +131,10 @@ internal val WarnBorder: Color     @Composable get() = LocalAppColors.current.wa
 internal val WarnText: Color       @Composable get() = LocalAppColors.current.warnText
 internal val BannerErrorBg: Color   @Composable get() = LocalAppColors.current.bannerErrorBg
 internal val BannerSuccessBg: Color @Composable get() = LocalAppColors.current.bannerSuccessBg
-internal val BubbleMe: Color       @Composable get() = LocalAppColors.current.bubbleMe
-internal val BubbleThem: Color     @Composable get() = LocalAppColors.current.bubbleThem
-internal val StrengthWeak: Color   @Composable get() = LocalAppColors.current.strengthWeak
+internal val BubbleMe: Color        @Composable get() = LocalAppColors.current.bubbleMe
+internal val BubbleThem: Color      @Composable get() = LocalAppColors.current.bubbleThem
+internal val DateOverlayBg: Color   @Composable get() = LocalAppColors.current.dateOverlayBg
+internal val StrengthWeak: Color    @Composable get() = LocalAppColors.current.strengthWeak
 internal val StrengthMedium: Color @Composable get() = LocalAppColors.current.strengthMedium
 internal val StrengthStrong: Color @Composable get() = LocalAppColors.current.strengthStrong
 
