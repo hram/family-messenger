@@ -262,8 +262,10 @@ download_web() {
 
 write_backend_env() {
   local db_password="$1"
+  local app_version="$2"
   cat <<EOF | ${SUDO} tee "${CONFIG_ROOT}/backend.env" >/dev/null
 SERVER_PORT=${BACKEND_PORT}
+APP_VERSION=${app_version}
 DB_HOST=127.0.0.1
 DB_PORT=${DB_PORT}
 DB_NAME=${DB_NAME}
@@ -398,7 +400,7 @@ main() {
   ensure_user_and_dirs
   write_schema "${version}"
   write_postgres_compose "${db_password}"
-  write_backend_env "${db_password}"
+  write_backend_env "${db_password}" "${version#v}"
   write_systemd_unit
   write_caddy_config
   download_jar "${version}"

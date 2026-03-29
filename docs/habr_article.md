@@ -10,11 +10,15 @@
 
 ---
 
+
+
 ## Что вышло
 
 **Family Messenger** — self-hosted мессенджер для семьи.
 
-<!-- СКРИНШОТ: десктопная версия, двухколоночный layout — показать масштаб проекта -->
+![Мобильная версия](https://habrastorage.org/webt/8u/ya/hm/8uyahmx9dgzeigg1vuamfk8zbam.png)
+![Десктопная версия](https://habrastorage.org/webt/g1/bh/mc/g1bhmcd9ojtsk_uz2algmpnfiyq.png)
+![Веб версия](https://habrastorage.org/webt/46/ao/da/46aodavlcewduktbcta3jfwhan8.png)
 
 Монорепо, Kotlin Multiplatform, один кодовый базис для всех платформ:
 
@@ -64,8 +68,6 @@ monorepo/
 `expect`/`actual` только там где без этого не обойтись: HTTP-движок
 (OkHttp / Darwin / JS fetch), secure storage, геолокация, нотификации.
 
-<!-- СКРИНШОТ: мобильная версия рядом с десктопной — показать что UI один -->
-
 ---
 
 ## Архитектура
@@ -103,6 +105,8 @@ MVI через `AppViewModel`: UI-события → `AppState`.
 ---
 
 ## Адаптивный layout: один UI для всех платформ
+
+![](https://habrastorage.org/webt/ng/z8/vz/ngz8vzyi9l9idced22mnvgphpgw.gif)
 
 Одна из нетривиальных задач KMP — разные форм-факторы.
 На мобильном нужна последовательная навигация (Contacts → Chat),
@@ -165,13 +169,19 @@ private fun WideLayout(state: AppUiState, viewModel: AppViewModel) {
 
 ## Цветовая система как пример
 
+Демонстрация палитры в интерактивном режиме Claude
+
+![Светлая тема](https://habrastorage.org/webt/h5/dh/_s/h5dh_szykjpviper7uxksutuqy4.png)
+
+![Темная тема](https://habrastorage.org/webt/0f/mq/t2/0fmqt2sjjkuwj90scjnaw1vaam0.png)
+
 Один конкретный пример того, как работает вайбкодинг с правилами.
 
 Я дал Claude требование: никаких хардкодных `Color(0xFF...)` в UI-файлах.
 Все цвета — через `AppColorScheme` с light/dark значениями,
 доступ только через composable-аксессор.
 
-<!-- СКРИНШОТ: светлая и тёмная тема рядом — показать что темизация работает -->
+![Светлая и темная темы](https://habrastorage.org/webt/pb/ra/br/pbrabryyw8tvyf1w4gktufzas0c.png)
 
 Вот как это устроено:
 
@@ -234,6 +244,7 @@ CompositionLocalProvider(
 
 Мессенджер без статусов доставки — не мессенджер.
 Реализовали четыре состояния в стиле Telegram:
+![](https://habrastorage.org/webt/af/9-/sv/af9-sv731wdc2zlyhbzrug_udls.png)
 
 ```kotlin
 enum class MessageStatus {
@@ -283,6 +294,9 @@ LaunchedEffect(listState) {
 ## QR-код для входа
 
 Вместо ручного ввода invite-кода сделали QR-сканер.
+
+![Интерактивный прототип с анимацией](https://habrastorage.org/webt/sg/sq/b0/sgsqb0nbkvwlq8wsg76oir_jjs0.gif)
+
 Работает только на Android и iOS — через `expect`/`actual`:
 
 ```kotlin
@@ -322,6 +336,8 @@ if (isQrScannerSupported()) {
 Визард доступен только в веб-версии — это принципиально,
 потому что именно веб открывается при первом обращении к серверу.
 
+![Интерактивный визард в Claude](https://habrastorage.org/webt/xa/f-/j2/xaf-j2cb_j71z79ken-4yv2vz6y.png)
+
 Три шага:
 
 1. **Мастер-пароль** — защита панели администрирования.
@@ -340,6 +356,40 @@ myserver.com:8081  →  семья Ивановых
 myserver.com:8082  →  семья Петровых
 ```
 Каждый порт — отдельный Docker-стек со своей БД.
+
+---
+
+## Иконка приложения
+
+Мелочь, но показательная.
+
+Попросил Claude предложить варианты иконки. Получил 6 концепций в SVG прямо
+в чате — интерактивный прототип с превью в трёх размерах и на тёмном фоне.
+
+![Пепвый вариант не понравился](https://habrastorage.org/webt/a2/9r/e9/a29re9d5djzf3zghxcxvjyyebyc.png)
+
+![Второй уже лучше](https://habrastorage.org/webt/2z/vw/mz/2zvwmzjklq40kuqn9fwxqy97lmq.png)
+
+Выбрал концепцию «родитель-защитник»: крупная центральная фигура,
+двое детей по бокам разного размера и высоты — намеренная асимметрия,
+потому что настоящая семья не симметрична.
+
+Финальный SVG в 1024×1024 — мастер для нарезки:
+
+```bash
+# Android
+cairosvg ic_launcher.svg -o mipmap-xxxhdpi/ic_launcher.png -W 192 -H 192
+
+# iOS (через iconutil на macOS)
+mkdir icon.iconset
+cairosvg ic_launcher.svg -o icon.iconset/icon_512x512.png -W 512 -H 512
+iconutil -c icns icon.iconset -o icon.icns
+```
+
+Важный момент для Android: не использовать Adaptive Icon с `foreground`/`background`
+если в foreground есть элементы с `opacity < 1`. На белом фоне foreground-файла
+полупрозрачный белый выглядит серым. Проще положить финальный PNG с фоном
+напрямую в `mipmap-*`.
 
 ---
 
@@ -364,7 +414,7 @@ production-ready secure messenger.
 Проблема в том, что для нормального публичного `HTTPS`, который браузеры и
 мобильные клиенты принимают без предупреждений, нужен **домен**.
 
-Сертификат на голый IP вроде `https://<IP>` не даёт нормального UX:
+Сертификат на голый IP вроде `https://83.95.243.147` не даёт нормального UX:
 
 - self-signed сертификат шифрует трафик, но браузеры показывают scary warning
 - на каждом устройстве нужно вручную устанавливать доверие к сертификату
@@ -401,36 +451,6 @@ production-ready secure messenger.
 
 ---
 
-## Иконка приложения
-
-Мелочь, но показательная.
-
-Попросил Claude предложить варианты иконки. Получил 6 концепций в SVG прямо
-в чате — интерактивный прототип с превью в трёх размерах и на тёмном фоне.
-
-Выбрал концепцию «родитель-защитник»: крупная центральная фигура,
-двое детей по бокам разного размера и высоты — намеренная асимметрия,
-потому что настоящая семья не симметрична.
-
-Финальный SVG в 1024×1024 — мастер для нарезки:
-
-```bash
-# Android
-cairosvg ic_launcher.svg -o mipmap-xxxhdpi/ic_launcher.png -W 192 -H 192
-
-# iOS (через iconutil на macOS)
-mkdir icon.iconset
-cairosvg ic_launcher.svg -o icon.iconset/icon_512x512.png -W 512 -H 512
-iconutil -c icns icon.iconset -o icon.icns
-```
-
-Важный момент для Android: не использовать Adaptive Icon с `foreground`/`background`
-если в foreground есть элементы с `opacity < 1`. На белом фоне foreground-файла
-полупрозрачный белый выглядит серым. Проще положить финальный PNG с фоном
-напрямую в `mipmap-*`.
-
----
-
 ## Это был не один промпт
 
 Ещё одна важная вещь, которую хочется проговорить прямо:
@@ -447,6 +467,8 @@ iconutil -c icns icon.iconset -o icon.icns
 - `promts/step_3.md`
 - `promts/step_4.md`
 - `promts/step_5.md`
+
+**Полный текст промптов доступен в репозитории.**
 
 И это, на мой взгляд, как раз самая честная часть всей истории про
 вайбкодинг. Не "я сказал магические слова и всё появилось само", а
@@ -557,7 +579,7 @@ iconutil -c icns icon.iconset -o icon.icns
 Ещё один важный артефакт процесса — HTML-прототип интерфейса, который тоже
 сделал Claude:
 
-- `promts/family_messenger_prototype.html`
+![promts/family_messenger_prototype.html](https://habrastorage.org/webt/3h/j6/nc/3hj6ncpqvemws9g-7vcply5hct8.gif)
 
 Это не просто картинка, а живой интерактивный макет:
 
@@ -641,7 +663,7 @@ iconutil -c icns icon.iconset -o icon.icns
 
 ## Итог
 
-Проект занял несколько недель вместо нескольких месяцев.
+Проект занял 3 дня выходных вместо нескольких месяцев.
 
 Кроссплатформа на KMP + Compose Multiplatform — реально работает.
 Один UI на Android, iOS, Desktop и Web — не маркетинг, а факт.
@@ -654,8 +676,4 @@ iconutil -c icns icon.iconset -o icon.icns
 Сетевые риски, доверенный TLS, домен, операционная модель и поддержка семьи —
 это всё ещё не про автокомплит, а про ответственность автора.
 
-Исходники: **[github.com/ваш-репо]** — issues и звёздочки приветствуются.
-
----
-
-*Теги: kotlin, kotlin multiplatform, compose multiplatform, ktor, vibe coding, open source*
+Исходники: **https://github.com/hram/family-messenger** — issues и звёздочки приветствуются.

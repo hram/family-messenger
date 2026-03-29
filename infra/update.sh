@@ -70,6 +70,12 @@ fi
 ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
 rm -f /tmp/family-messenger-web.tar.gz
 
+if grep -q '^APP_VERSION=' "${CONFIG_ROOT}/backend.env"; then
+  ${SUDO} sed -i "s/^APP_VERSION=.*/APP_VERSION=${RELEASE_VERSION#v}/" "${CONFIG_ROOT}/backend.env"
+else
+  printf 'APP_VERSION=%s\n' "${RELEASE_VERSION#v}" | ${SUDO} tee -a "${CONFIG_ROOT}/backend.env" >/dev/null
+fi
+
 ${SUDO} sed -i "s/^RELEASE_VERSION=.*/RELEASE_VERSION=${RELEASE_VERSION}/" "${CONFIG_ROOT}/install.env"
 if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then
   ${SUDO} docker compose -p "${POSTGRES_COMPOSE_PROJECT_NAME}" -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d
