@@ -4,6 +4,7 @@ set -euo pipefail
 CONFIG_ROOT="${CONFIG_ROOT:-/etc/family-messenger}"
 SYSTEMD_UNIT_NAME="${SYSTEMD_UNIT_NAME:-family-messenger-backend}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
+ANDROID_APK_ASSET_NAME="${ANDROID_APK_ASSET_NAME:-family-messenger-android-no-fcm-debug.apk}"
 REQUESTED_RELEASE_VERSION="${RELEASE_VERSION:-}"
 
 log() {
@@ -48,6 +49,7 @@ fi
 
 JAR_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_VERSION}/family-messenger-backend-all.jar"
 WEB_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_VERSION}/${WEB_ASSET_NAME}"
+APK_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_VERSION}/${ANDROID_APK_ASSET_NAME}"
 
 log "Downloading ${RELEASE_VERSION}"
 curl -fL "${JAR_URL}" -o /tmp/family-messenger-backend-all.jar
@@ -69,6 +71,12 @@ if command -v gzip >/dev/null 2>&1; then
 fi
 ${SUDO} chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web"
 rm -f /tmp/family-messenger-web.tar.gz
+
+curl -fL "${APK_URL}" -o "/tmp/${ANDROID_APK_ASSET_NAME}"
+${SUDO} mkdir -p "${INSTALL_ROOT}/web/downloads"
+${SUDO} mv "/tmp/${ANDROID_APK_ASSET_NAME}" "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
+${SUDO} chown "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
+${SUDO} chmod 0644 "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
 
 if grep -q '^APP_VERSION=' "${CONFIG_ROOT}/backend.env"; then
   ${SUDO} sed -i "s/^APP_VERSION=.*/APP_VERSION=${RELEASE_VERSION#v}/" "${CONFIG_ROOT}/backend.env"

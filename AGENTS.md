@@ -24,7 +24,7 @@ Run commands from the repository root unless noted otherwise:
 - `./gradlew :backend:buildFatJar`: build deployable backend jar
 - `./gradlew :client:composeApp:compileKotlinJs`: compile web client
 - `./gradlew :client:composeApp:jsBrowserProductionWebpack`: build production web bundle
-- `./gradlew :client:composeApp:assembleDebug`: build Android debug APK
+- `./gradlew :client:composeApp:assembleNoFcmDebug`: build Android no-FCM debug APK
 - `docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build`: local infra run
 - `rg --files`: fast file listing
 - `rg -n "<pattern>" .`: fast code/document search
@@ -33,7 +33,7 @@ Important deploy artifacts:
 
 - backend jar: `backend/build/libs/family-messenger-backend-all.jar`
 - web bundle dir: `client/composeApp/build/dist/js/productionExecutable/`
-- Android debug APK: `client/composeApp/build/outputs/apk/debug/composeApp-debug.apk`
+- Android no-FCM debug APK: `client/composeApp/build/outputs/apk/noFcm/debug/composeApp-noFcm-debug.apk`
 
 ## Deployment Memory
 Before any server deploy, read `docs/DEPLOY_RUNBOOK.md`.

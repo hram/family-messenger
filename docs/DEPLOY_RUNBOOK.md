@@ -52,13 +52,13 @@ tar -C client/composeApp/build/dist/js/productionExecutable -czf /tmp/family-mes
 Если нужен Android APK:
 
 ```bash
-./gradlew :client:composeApp:assembleDebug
+./gradlew :client:composeApp:assembleNoFcmDebug
 ```
 
 Результат:
 
 ```text
-client/composeApp/build/outputs/apk/debug/composeApp-debug.apk
+client/composeApp/build/outputs/apk/noFcm/debug/composeApp-noFcm-debug.apk
 ```
 
 ## Известная Схема Окружений
@@ -84,16 +84,16 @@ Production:
 - backend jar: `/opt/family-messenger/family-messenger-backend-all.jar`
 - web root: `/opt/family-messenger/web`
 - web entrypoint: `/opt/family-messenger/web/index.html`
-- Android APK: `/opt/family-messenger/web/downloads/family-messenger-android-debug.apk`
-- public APK URL: `http://<IP>:8080/downloads/family-messenger-android-debug.apk`
+- Android APK: `/opt/family-messenger/web/downloads/family-messenger-android-no-fcm-debug.apk`
+- public APK URL: `http://<IP>:8080/downloads/family-messenger-android-no-fcm-debug.apk`
 
 Development:
 
 - backend jar: `/opt/family-messenger-dev/family-messenger-backend-all.jar`
 - web root: `/opt/family-messenger-dev/web`
 - web entrypoint: `/opt/family-messenger-dev/web/index.html`
-- Android APK: `/opt/family-messenger-dev/web/downloads/family-messenger-android-debug.apk`
-- public APK URL: `http://<IP>:9080/downloads/family-messenger-android-debug.apk`
+- Android APK: `/opt/family-messenger-dev/web/downloads/family-messenger-android-no-fcm-debug.apk`
+- public APK URL: `http://<IP>:9080/downloads/family-messenger-android-no-fcm-debug.apk`
 
 Caddy сейчас раздаёт:
 

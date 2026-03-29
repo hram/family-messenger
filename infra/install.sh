@@ -24,6 +24,7 @@ POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-family-messenger-postgres}"
 POSTGRES_VOLUME_NAME="${POSTGRES_VOLUME_NAME:-family_messenger_postgres_data}"
 POSTGRES_COMPOSE_PROJECT_NAME="${POSTGRES_COMPOSE_PROJECT_NAME:-family-messenger}"
 WEB_ASSET_NAME="${WEB_ASSET_NAME:-family-messenger-web.tar.gz}"
+ANDROID_APK_ASSET_NAME="${ANDROID_APK_ASSET_NAME:-family-messenger-android-no-fcm-debug.apk}"
 CADDY_SITES_ROOT="${CADDY_SITES_ROOT:-/etc/caddy/sites-enabled}"
 CADDY_SITE_NAME="${CADDY_SITE_NAME:-family-messenger}"
 CADDY_SITE_FILE="${CADDY_SITE_FILE:-${CADDY_SITES_ROOT}/${CADDY_SITE_NAME}.caddy}"
@@ -260,6 +261,17 @@ download_web() {
   rm -f /tmp/family-messenger-web.tar.gz
 }
 
+download_android_apk() {
+  local version="$1"
+  local apk_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/${ANDROID_APK_ASSET_NAME}"
+  log "Downloading Android APK ${version}"
+  curl -fL "${apk_url}" -o "/tmp/${ANDROID_APK_ASSET_NAME}"
+  ${SUDO} mkdir -p "${INSTALL_ROOT}/web/downloads"
+  ${SUDO} mv "/tmp/${ANDROID_APK_ASSET_NAME}" "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
+  ${SUDO} chown "${APP_USER}:${APP_GROUP}" "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
+  ${SUDO} chmod 0644 "${INSTALL_ROOT}/web/downloads/${ANDROID_APK_ASSET_NAME}"
+}
+
 write_backend_env() {
   local db_password="$1"
   local app_version="$2"
@@ -336,6 +348,7 @@ POSTGRES_VOLUME_NAME=${POSTGRES_VOLUME_NAME}
 POSTGRES_COMPOSE_PROJECT_NAME=${POSTGRES_COMPOSE_PROJECT_NAME}
 POSTGRES_IMAGE=${POSTGRES_IMAGE}
 WEB_ASSET_NAME=${WEB_ASSET_NAME}
+ANDROID_APK_ASSET_NAME=${ANDROID_APK_ASSET_NAME}
 CADDY_SITES_ROOT=${CADDY_SITES_ROOT}
 CADDY_SITE_NAME=${CADDY_SITE_NAME}
 CADDY_SITE_FILE=${CADDY_SITE_FILE}
@@ -405,6 +418,7 @@ main() {
   write_caddy_config
   download_jar "${version}"
   download_web "${version}"
+  download_android_apk "${version}"
 
   log "Starting PostgreSQL"
   ${SUDO} docker compose -p "${POSTGRES_COMPOSE_PROJECT_NAME}" -f "${INSTALL_ROOT}/postgres/docker-compose.yml" up -d

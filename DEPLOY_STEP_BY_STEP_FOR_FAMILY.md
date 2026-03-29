@@ -126,13 +126,13 @@ Open in browser: http://123.123.123.123:8080
 Если Android-приложение уже выложено на сервер, оно будет доступно по ссылке:
 
 ```text
-http://ТВОЙ_IP:8080/downloads/family-messenger-android-debug.apk
+http://ТВОЙ_IP:8080/downloads/family-messenger-android-no-fcm-debug.apk
 ```
 
 Пример:
 
 ```text
-http://123.123.123.123:8080/downloads/family-messenger-android-debug.apk
+http://123.123.123.123:8080/downloads/family-messenger-android-no-fcm-debug.apk
 ```
 
 Что сделать:
