@@ -54,9 +54,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
 import com.familymessenger.composeapp.generated.resources.*
 import com.familymessenger.contract.SetupInviteSummary
 import com.familymessenger.contract.UserRole
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import org.jetbrains.compose.resources.stringResource
 
 // ── Root ──────────────────────────────────────────────────────────────────────
@@ -462,39 +464,43 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Success header
         SetupCard {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(TgBlueTint)
-                    .align(Alignment.CenterHorizontally),
-                contentAlignment = Alignment.Center,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Icon(
-                    imageVector = AppIcons.Check,
-                    contentDescription = null,
-                    tint = TgBlue,
-                    modifier = Modifier.size(28.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(TgBlueTint),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = TgBlue,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        stringResource(Res.string.setup_done_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                    )
+                    Text(
+                        stringResource(Res.string.setup_done_description),
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        lineHeight = 18.sp,
+                    )
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                stringResource(Res.string.setup_done_title),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(Res.string.setup_done_description),
-                fontSize = 14.sp,
-                color = TextSecondary,
-                lineHeight = 20.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        }
+
+        if (state.serverUrl.isNotEmpty()) {
+            ApkInstallCard(apkUrl = "${state.serverUrl}/downloads/family-messenger-android-no-fcm-debug.apk")
         }
 
         state.generatedInvites.forEach { invite ->
@@ -506,6 +512,101 @@ private fun StepInvites(state: SetupUiState, viewModel: SetupViewModel) {
             onClick = viewModel::finish,
             modifier = Modifier.testTag(AppTestTags.SetupFinish),
         )
+    }
+}
+
+@Composable
+private fun ApkInstallCard(apkUrl: String) {
+    val painter = rememberQrCodePainter(apkUrl)
+    Surface(
+        color = CardBg,
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.5.dp, TgBlue, RoundedCornerShape(14.dp)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Header
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(TgBlue),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Phone,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Column {
+                    Text(stringResource(Res.string.setup_install_android_title), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Text(stringResource(Res.string.setup_install_android_sub), fontSize = 12.sp, color = TextSecondary)
+                }
+            }
+
+            // Body: QR + instructions
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Image(
+                    painter = painter,
+                    contentDescription = apkUrl,
+                    modifier = Modifier
+                        .size(150.dp)
+                        .border(0.5.dp, CardBorder, RoundedCornerShape(10.dp))
+                        .padding(6.dp),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    Button(
+                        onClick = { uriHandler.openUri(apkUrl) },
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = TgBlue),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
+                    ) {
+                        Icon(imageVector = AppIcons.ArrowDown, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(Res.string.action_download), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                    listOf(
+                        stringResource(Res.string.setup_install_step_1),
+                        stringResource(Res.string.setup_install_step_2),
+                        stringResource(Res.string.setup_install_step_3),
+                    ).forEachIndexed { i, step ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(TgBlueTint),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "${i + 1}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = LinkBlue,
+                                    lineHeight = 10.sp,
+                                )
+                            }
+                            Text(step, fontSize = 12.sp, color = TextSecondary, lineHeight = 16.sp, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -598,7 +699,7 @@ private fun InviteCard(invite: SetupInviteSummary, serverUrl: String) {
                 )
                 InviteActionButton(
                     icon = AppIcons.QrCode,
-                    label = stringResource(Res.string.action_qr_code),
+                    label = stringResource(Res.string.action_qr_code_login),
                     modifier = Modifier.weight(1f),
                     onClick = { showQr = true },
                 )

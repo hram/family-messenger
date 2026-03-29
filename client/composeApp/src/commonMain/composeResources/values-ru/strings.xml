@@ -14,6 +14,8 @@
     <string name="action_back">Назад</string>
     <string name="action_create">Создать</string>
     <string name="action_qr_code">QR-код</string>
+    <string name="action_qr_code_login">QR-код входа</string>
+    <string name="action_download">Скачать</string>
     <string name="action_show">Показать</string>
     <string name="action_hide">Скрыть</string>
     <string name="action_close">Закрыть</string>
@@ -138,6 +140,11 @@
     <string name="setup_done_title">Готово!</string>
     <string name="setup_done_description">Отправьте каждому участнику его код или покажите QR — они отсканируют и сразу войдут.</string>
     <string name="setup_enter_app">Войти в приложение</string>
+    <string name="setup_install_android_title">Установить на Android</string>
+    <string name="setup_install_android_sub">Отсканируйте QR камерой телефона</string>
+    <string name="setup_install_step_1">Отсканируйте QR стандартной камерой</string>
+    <string name="setup_install_step_2">Скачайте и установите APK</string>
+    <string name="setup_install_step_3">Разрешите установку из этого источника если потребуется</string>
 
     <!-- Password strength -->
     <string name="password_strength_weak">Слабый пароль</string>

@@ -1,0 +1,192 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:transparent}
+.page{background:var(--color-background-tertiary);padding:24px 16px;min-height:600px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.step-bar{display:flex;align-items:center;margin-bottom:12px}
+.sd{width:28px;height:28px;border-radius:50%;background:#2AABEE;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.sl{flex:1;height:2px;background:#2AABEE}
+.card{background:var(--color-background-primary);border:0.5px solid #E8E8E8;border-radius:14px;padding:20px}
+.success-icon{width:48px;height:48px;border-radius:50%;background:#E8F4FD;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.title{font-size:20px;font-weight:500;color:var(--color-text-primary);text-align:center}
+.sub{font-size:14px;color:#8A8A8A;text-align:center;margin-top:6px;line-height:1.5}
+.apk-card{background:var(--color-background-primary);border:1.5px solid #2AABEE;border-radius:14px;padding:16px}
+.apk-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.apk-icon-box{width:36px;height:36px;border-radius:8px;background:#2AABEE;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.apk-title{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.apk-sub{font-size:12px;color:#8A8A8A;margin-top:2px}
+.apk-body{display:flex;gap:14px;align-items:flex-start}
+.qr-placeholder{width:110px;height:110px;border-radius:10px;background:#F5F5F5;border:0.5px solid #E8E8E8;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.apk-right{flex:1;display:flex;flex-direction:column;gap:8px}
+.apk-url{font-size:11px;font-family:var(--font-mono);color:#1A8DD1;background:#E8F4FD;border-radius:6px;padding:6px 8px;word-break:break-all}
+.steps{display:flex;flex-direction:column;gap:4px}
+.step-row{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#8A8A8A;line-height:1.4}
+.step-num{width:16px;height:16px;border-radius:50%;background:#E8F4FD;color:#185FA5;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.invite-box{background:var(--color-background-primary);border:0.5px solid #E8E8E8;border-radius:10px;overflow:hidden}
+.invite-top{background:#E8F4FD;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.invite-left{flex:1;min-width:0}
+.invite-name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.invite-name{font-size:14px;color:#185FA5;font-weight:500}
+.invite-role{font-size:11px;color:#185FA5;opacity:.75}
+.admin-badge{font-size:10px;background:#2AABEE;color:#fff;padding:1px 7px;border-radius:8px;font-weight:500;white-space:nowrap}
+.invite-code{font-size:20px;font-weight:500;color:#1A8DD1;letter-spacing:2px;font-family:var(--font-mono);flex-shrink:0}
+.invite-btns{display:flex;gap:8px;padding:10px 12px;background:var(--color-background-primary)}
+.iact-btn{flex:1;padding:7px 0;background:#F5F5F5;border:0.5px solid #E8E8E8;border-radius:8px;cursor:pointer;font-size:12px;color:#8A8A8A;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .15s}
+.iact-btn:hover{background:#E8F4FD;color:#185FA5;border-color:#B5D4F4}
+.btn-primary{width:100%;padding:12px;background:#2AABEE;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
+.btn-primary:hover{background:#1A8DD1}
+.qr-modal-bg{display:none;background:rgba(0,0,0,0.4);border-radius:12px;padding:20px;align-items:center;justify-content:center;min-height:300px}
+.qr-modal{background:var(--color-background-primary);border-radius:12px;padding:20px;text-align:center;max-width:240px;width:100%}
+.qr-modal-name{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.qr-modal-role{font-size:12px;color:#8A8A8A;margin-bottom:10px}
+.qr-modal-canvas{display:inline-block;padding:10px;background:#fff;border-radius:8px;border:0.5px solid #E8E8E8;margin-bottom:8px}
+.qr-modal-code{font-size:13px;font-family:var(--font-mono);color:#1A8DD1;letter-spacing:2px;margin-bottom:12px}
+.qr-modal-close{width:100%;padding:9px;background:transparent;border:0.5px solid #E8E8E8;border-radius:8px;cursor:pointer;font-size:13px;color:#8A8A8A}
+</style>
+
+<div class="page">
+  <div class="wrap">
+    <div class="step-bar">
+      <div class="sd"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="sl"></div>
+      <div class="sd"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="sl"></div>
+      <div class="sd">3</div>
+    </div>
+
+    <div class="card">
+      <div class="success-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2AABEE" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="title">Готово!</div>
+      <div class="sub">Сначала установите приложение на телефоны,<br>затем раздайте коды участникам.</div>
+    </div>
+
+    <!-- APK блок -->
+    <div class="apk-card">
+      <div class="apk-header">
+        <div class="apk-icon-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1" fill="white"/></svg>
+        </div>
+        <div>
+          <div class="apk-title">Установить на Android</div>
+          <div class="apk-sub">Отсканируйте QR камерой телефона</div>
+        </div>
+      </div>
+      <div class="apk-body">
+        <div class="qr-placeholder" id="apk-qr-wrap">
+          <canvas id="apk-qr" width="100" height="100"></canvas>
+        </div>
+        <div class="apk-right">
+          <div class="apk-url" id="apk-url-text">http://192.168.1.10:8081/app.apk</div>
+          <div class="steps">
+            <div class="step-row"><div class="step-num">1</div>Отсканируйте QR стандартной камерой</div>
+            <div class="step-row"><div class="step-num">2</div>Скачайте и установите APK</div>
+            <div class="step-row"><div class="step-num">3</div>Разрешите установку из этого источника если потребуется</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Коды участников — рендерятся сразу без JS -->
+    <div id="invites-list"></div>
+
+    <button class="btn-primary">Войти в панель администратора</button>
+
+    <!-- QR модал для кода входа -->
+    <div class="qr-modal-bg" id="invite-qr-bg">
+      <div class="qr-modal">
+        <div class="qr-modal-name" id="iqr-name"></div>
+        <div class="qr-modal-role" id="iqr-role"></div>
+        <div class="qr-modal-canvas"><canvas id="iqr-canvas" width="140" height="140"></canvas></div>
+        <div class="qr-modal-code" id="iqr-code"></div>
+        <button class="qr-modal-close" onclick="closeQr()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const SERVER = 'http://192.168.1.10:8081';
+const APK_URL = SERVER + '/app.apk';
+
+const members = [
+  {name:'Папа', role:'Parent', isAdmin:true,  code:'5UM8-RVYY'},
+  {name:'Мама', role:'Parent', isAdmin:false, code:'U675-F342'},
+  {name:'Поля', role:'Child',  isAdmin:false, code:'EH9M-BS7P'},
+  {name:'Катя', role:'Child',  isAdmin:false, code:'4T4T-KY82'},
+];
+
+// 1. Рендерим карточки участников сразу — без ожидания QR-библиотеки
+function renderInvites() {
+  const list = document.getElementById('invites-list');
+  members.forEach((m, i) => {
+    const box = document.createElement('div');
+    box.className = 'invite-box';
+    box.innerHTML = `
+      <div class="invite-top">
+        <div class="invite-left">
+          <div class="invite-name-row">
+            <span class="invite-name">${m.name}</span>
+            ${m.isAdmin ? '<span class="admin-badge">Администратор</span>' : ''}
+          </div>
+          <div class="invite-role">${m.role}</div>
+        </div>
+        <div class="invite-code">${m.code}</div>
+      </div>
+      <div class="invite-btns">
+        <button class="iact-btn" onclick="copyCode('${m.code}', this)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Скопировать
+        </button>
+        <button class="iact-btn" onclick="showInviteQr(${i})">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/></svg>
+          QR-код входа
+        </button>
+      </div>`;
+    list.appendChild(box);
+  });
+}
+
+// 2. QR рендерим только после загрузки библиотеки
+function renderQrWhenReady() {
+  if (typeof QRCode === 'undefined') {
+    setTimeout(renderQrWhenReady, 100);
+    return;
+  }
+  QRCode.toCanvas(document.getElementById('apk-qr'), APK_URL,
+    {width:100, margin:1, color:{dark:'#000000', light:'#ffffff'}}, ()=>{});
+}
+
+function copyCode(code, btn) {
+  navigator.clipboard?.writeText(code).catch(()=>{});
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Скопировано!';
+  setTimeout(() => { btn.innerHTML = orig; }, 1500);
+}
+
+function showInviteQr(i) {
+  const m = members[i];
+  const payload = `familymessenger://join?code=${m.code}&url=${encodeURIComponent(SERVER)}`;
+  document.getElementById('iqr-name').textContent = m.name;
+  document.getElementById('iqr-role').textContent = m.role;
+  document.getElementById('iqr-code').textContent = m.code;
+  const bg = document.getElementById('invite-qr-bg');
+  bg.style.display = 'flex';
+  const canvas = document.getElementById('iqr-canvas');
+  canvas.getContext('2d').clearRect(0,0,140,140);
+  if (typeof QRCode !== 'undefined') {
+    QRCode.toCanvas(canvas, payload, {width:140, margin:1, color:{dark:'#000',light:'#fff'}}, ()=>{});
+  }
+}
+
+function closeQr() {
+  document.getElementById('invite-qr-bg').style.display = 'none';
+}
+
+// Запускаем: карточки сразу, QR когда готов
+renderInvites();
+renderQrWhenReady();
+</script>

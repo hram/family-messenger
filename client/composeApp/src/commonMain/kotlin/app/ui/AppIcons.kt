@@ -468,6 +468,50 @@ object AppIcons {
         }.build()
     }
 
+    val ArrowDown: ImageVector by lazy {
+        ImageVector.Builder("ArrowDown", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(12f, 5f)
+                lineTo(12f, 19f)
+                moveTo(6f, 13f)
+                lineTo(12f, 19f)
+                lineTo(18f, 13f)
+            }
+        }.build()
+    }
+
+    val Phone: ImageVector by lazy {
+        ImageVector.Builder("Phone", 24.dp, 24.dp, 24f, 24f).apply {
+            path(
+                fill = SolidColor(Color.Transparent),
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(7f, 2f)
+                lineTo(17f, 2f)
+                curveTo(17.6f, 2f, 18f, 2.4f, 18f, 3f)
+                lineTo(18f, 21f)
+                curveTo(18f, 21.6f, 17.6f, 22f, 17f, 22f)
+                lineTo(7f, 22f)
+                curveTo(6.4f, 22f, 6f, 21.6f, 6f, 21f)
+                lineTo(6f, 3f)
+                curveTo(6f, 2.4f, 6.4f, 2f, 7f, 2f)
+                close()
+                moveTo(12f, 18f)
+                arcToRelative(1f, 1f, 0f, true, true, 0f, 2f)
+                arcToRelative(1f, 1f, 0f, true, true, 0f, -2f)
+            }
+        }.build()
+    }
+
     val DoubleCheck: ImageVector by lazy {
         ImageVector.Builder("DoubleCheck", 24.dp, 24.dp, 24f, 24f).apply {
             path(

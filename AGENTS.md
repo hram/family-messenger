@@ -68,6 +68,9 @@ For source modules:
 - prefer language-standard formatters and linters
 - avoid committing generated artifacts under `build/`
 - do not commit IDE-specific `.idea/` changes unless intentionally shared
+- for Compose UI logo rendering, do not use `ic_launcher.svg` directly on web
+- keep `appLogoPainter()` bound to a stable common UI asset such as `logo_ui.png`
+- if login/splash must match the app icon visually, update `logo_ui` to the same artwork instead of pointing UI code back to launcher SVG resources
 
 ## Testing Guidelines
 The repository has automated tests now.

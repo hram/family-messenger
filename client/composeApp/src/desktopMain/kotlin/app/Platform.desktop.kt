@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.painter.Painter
 import com.familymessenger.contract.PlatformType
 import com.familymessenger.composeapp.generated.resources.Res
-import com.familymessenger.composeapp.generated.resources.ic_launcher
+import com.familymessenger.composeapp.generated.resources.logo_ui
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -108,7 +108,7 @@ actual fun copyTextToClipboard(text: String) {
 }
 
 @Composable
-actual fun appLogoPainter(): Painter = painterResource(Res.drawable.ic_launcher)
+actual fun appLogoPainter(): Painter = painterResource(Res.drawable.logo_ui)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

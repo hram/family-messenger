@@ -14,6 +14,8 @@
     <string name="action_back">Back</string>
     <string name="action_create">Create</string>
     <string name="action_qr_code">QR code</string>
+    <string name="action_qr_code_login">QR login code</string>
+    <string name="action_download">Download</string>
     <string name="action_show">Show</string>
     <string name="action_hide">Hide</string>
     <string name="action_close">Close</string>
@@ -138,6 +140,11 @@
     <string name="setup_done_title">Done!</string>
     <string name="setup_done_description">Send each family member their code or show the QR code. They can scan it and log in right away.</string>
     <string name="setup_enter_app">Open the app</string>
+    <string name="setup_install_android_title">Install on Android</string>
+    <string name="setup_install_android_sub">Scan the QR with your phone camera</string>
+    <string name="setup_install_step_1">Scan the QR with your standard camera app</string>
+    <string name="setup_install_step_2">Download and install the APK</string>
+    <string name="setup_install_step_3">Allow installation from this source if prompted</string>
 
     <!-- Password strength -->
     <string name="password_strength_weak">Weak password</string>

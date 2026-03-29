@@ -13,14 +13,15 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
 import androidx.core.app.NotificationCompat
 import com.familymessenger.contract.PlatformType
-import com.familymessenger.client.R
+import com.familymessenger.composeapp.generated.resources.Res
+import com.familymessenger.composeapp.generated.resources.logo_ui
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import java.util.UUID
+import org.jetbrains.compose.resources.painterResource
 
 private object AndroidRuntime {
     lateinit var context: Context
@@ -132,7 +133,7 @@ actual fun copyTextToClipboard(text: String) {
 }
 
 @Composable
-actual fun appLogoPainter(): Painter = painterResource(R.mipmap.ic_launcher)
+actual fun appLogoPainter(): Painter = painterResource(Res.drawable.logo_ui)
 
 @Composable
 actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) {
