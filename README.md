@@ -72,11 +72,31 @@ Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.
 
 Сначала подключись к серверу по `SSH`.
 
+Открой терминал:
+
+- на Windows: `PowerShell` или `Windows Terminal`
+- на macOS: приложение `Terminal`
+- на Linux: обычный терминал
+
+`<SERVER_IP>` это IP-адрес сервера, который тебе прислал хостинг-провайдер.
+
 Пример:
 
 ```bash
 ssh root@<SERVER_IP>
 ```
+
+Если у тебя на сервере не пользователь `root`, замени `root` на своего пользователя, например:
+
+```bash
+ssh ubuntu@<SERVER_IP>
+```
+
+Если система спросит `yes/no`, ответь `yes`.
+
+Потом введи пароль сервера.
+
+Если ты вошёл успешно, увидишь командную строку уже на сервере.
 
 Важно:
 
