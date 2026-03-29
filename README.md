@@ -68,7 +68,23 @@ Manual product-level checks are collected in [TEST_SCENARIOS.md](TEST_SCENARIOS.
 
 ## One-Command VPS Install
 
-Целевой путь для обычного пользователя теперь такой:
+Если у тебя новый Ubuntu VPS и ты хочешь пройти самый простой путь, делай так.
+
+Сначала подключись к серверу по `SSH`.
+
+Пример:
+
+```bash
+ssh root@<SERVER_IP>
+```
+
+Важно:
+
+- команду установки ниже нужно выполнять именно на сервере после входа по `SSH`
+- не запускай её на своём ноутбуке или домашнем компьютере
+- не вставляй её в адресную строку браузера
+
+После входа на сервер выполни:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/install.sh | bash
@@ -85,13 +101,19 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/in
 - публикует сайт по адресу вида `http://<server-ip>:8080`
 - печатает итоговый URL вида `http://<server-ip>:8080`
 
+После завершения установки открой в браузере URL, который напечатает установщик.
+
 Обновление:
+
+Позже, когда уже будет установлен сервер, снова зайди на него по `SSH` и выполни:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/update.sh | bash
 ```
 
 Удаление:
+
+Если захочешь полностью удалить установку с сервера, сначала зайди на сервер по `SSH`, потом выполни:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/uninstall.sh | bash
