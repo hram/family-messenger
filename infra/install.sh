@@ -217,6 +217,19 @@ wait_for_postgres() {
   fail "PostgreSQL container did not become healthy in time"
 }
 
+wait_for_public_health() {
+  log "Waiting for public health endpoint"
+  local health_url="http://127.0.0.1:${PUBLIC_PORT}/api/health"
+  local i
+  for i in $(seq 1 60); do
+    if curl -fsS "${health_url}" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 2
+  done
+  fail "Public health endpoint did not become ready in time: ${health_url}"
+}
+
 download_jar() {
   local version="$1"
   local jar_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${version}/family-messenger-backend-all.jar"
@@ -401,6 +414,7 @@ main() {
   ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
   ${SUDO} caddy validate --config /etc/caddy/Caddyfile
   ${SUDO} systemctl restart caddy
+  wait_for_public_health
   maybe_open_ufw
   write_install_state "${version}" "${public_ip}"
 

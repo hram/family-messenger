@@ -15,6 +15,19 @@ fail() {
   exit 1
 }
 
+wait_for_public_health() {
+  local health_url="http://127.0.0.1:${PUBLIC_PORT}/api/health"
+  log "Waiting for public health endpoint"
+  local i
+  for i in $(seq 1 60); do
+    if curl -fsS "${health_url}" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 2
+  done
+  fail "Public health endpoint did not become ready in time: ${health_url}"
+}
+
 if [[ "${EUID}" -eq 0 ]]; then
   SUDO=""
 else
@@ -63,5 +76,6 @@ if [[ -f "${INSTALL_ROOT}/postgres/docker-compose.yml" ]]; then
 fi
 ${SUDO} systemctl restart "${SYSTEMD_UNIT_NAME}"
 ${SUDO} systemctl restart caddy
+wait_for_public_health
 
 log "Updated backend to ${RELEASE_VERSION}"
