@@ -194,3 +194,7 @@ curl -fsSL https://raw.githubusercontent.com/hram/family-messenger/main/infra/un
 - `200 OK` на `/api/health` означает, что backend отвечает, но не доказывает, что production-данные целы
 - после любых операций с dev-контуром, если есть сомнение, нужно дополнительно проверить счётчики prod-данных в БД
 - без отдельного Android dev flavor dev APK нельзя считать безопасной заменой prod APK на тех же устройствах
+
+## Лицензия
+
+Проект распространяется под лицензией [MIT](LICENSE), включая промпты в `promts/`.
